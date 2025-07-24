@@ -1,8 +1,8 @@
-const { AbilityBuilder, Ability } = require('@casl/ability');
+const { AbilityBuilder, createMongoAbility } = require('@casl/ability');
 
 // Define abilities based on user role and permissions
 const defineAbilitiesFor = (user) => {
-  const { can, cannot, build } = new AbilityBuilder(Ability);
+  const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
 
   if (!user || !user.role) {
     // Guest permissions
