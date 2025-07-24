@@ -1,0 +1,9 @@
+const initialSetup = require('./initialSetup.controller');
+const login = require('./login.controller');
+const management = require('./management.controller');
+
+module.exports = {
+  initialSetup,
+  login,
+  management
+};
