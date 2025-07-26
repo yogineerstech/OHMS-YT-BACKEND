@@ -11,17 +11,11 @@ passport.use(new LocalStrategy({
   passwordField: 'password'
 }, async (email, password, done) => {
   try {
-    // Find user with credentials
-    const userCredential = await prisma.userCredential.findFirst({
+    // Find user with credentials - Updated approach for JSON fields
+    const userCredentials = await prisma.userCredential.findMany({
       where: {
         credentialType: 'email',
-        user: {
-          personalDetails: {
-            path: ['email'],
-            equals: email
-          },
-          isActive: true
-        }
+        isActive: true
       },
       include: {
         user: {
@@ -41,6 +35,15 @@ passport.use(new LocalStrategy({
         }
       }
     });
+
+    // Filter by email
+    const userCredential = userCredentials.find(cred => 
+      cred.user && 
+      cred.user.isActive &&
+      cred.user.personalDetails &&
+      typeof cred.user.personalDetails === 'object' &&
+      cred.user.personalDetails.email === email
+    );
 
     if (!userCredential) {
       return done(null, false, { message: 'Invalid email or password' });

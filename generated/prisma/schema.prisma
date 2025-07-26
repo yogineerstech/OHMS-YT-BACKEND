@@ -1391,3 +1391,65 @@ model Diagnosis {
 }
 
 // =============================================================================
+
+// SUPERADMIN SERVICE 
+// This service handles super admin operations, including creating a super admin user.
+// It ensures that the super admin user is unique and performs necessary validations.
+// ============================================================================= 
+// SUPER ADMIN MANAGEMENT (System-wide access)
+// ============================================================================= 
+
+model SuperAdmin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  email     String   @unique
+  phone     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Authentication Relations
+  credentials SuperAdminCredential[]
+  sessions    SuperAdminSession[]
+
+  @@map("super_admins")
+}
+
+// Super Admin specific authentication
+model SuperAdminCredential {
+  id                 String    @id @default(auto()) @map("_id") @db.ObjectId
+  superAdminId       String    @db.ObjectId
+  credentialType     String    @default("email")
+  credentialDataHash String
+  isActive           Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  lastUsed           DateTime?
+  failedAttempts     Int       @default(0)
+  lockoutUntil       DateTime?
+
+  // Relations
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id])
+
+  @@map("super_admin_credentials")
+}
+
+// Super Admin Sessions
+model SuperAdminSession {
+  id               String    @id @default(auto()) @map("_id") @db.ObjectId
+  superAdminId     String    @db.ObjectId
+  sessionTokenHash String
+  refreshTokenHash String?
+  ipAddress        String?
+  userAgent        String?
+  loginTimestamp   DateTime  @default(now())
+  lastActivity     DateTime  @default(now())
+  expiresAt        DateTime
+  isActive         Boolean   @default(true)
+  logoutTimestamp  DateTime?
+
+  // Relations
+  superAdmin SuperAdmin @relation(fields: [superAdminId], references: [id])
+
+  @@map("super_admin_sessions")
+}

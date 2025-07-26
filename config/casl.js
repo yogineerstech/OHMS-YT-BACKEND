@@ -4,20 +4,28 @@ const { AbilityBuilder, createMongoAbility } = require('@casl/ability');
 const defineAbilitiesFor = (user) => {
   const { can, cannot, build } = new AbilityBuilder(createMongoAbility);
 
-  if (!user || !user.role) {
+  if (!user) {
     // Guest permissions
+    can('read', 'public');
+    return build();
+  }
+
+  // Check if user is SuperAdmin (add this check)
+  if (user.userType === 'super_admin' || (user.email && !user.role) || user.roleCode === 'SUPER_ADMIN') {
+    // Super Admin has all permissions across all hospitals
+    can('manage', 'all');
+    return build();
+  }
+
+  // Rest of your existing code...
+  // Regular staff permissions
+  if (!user.role) {
     can('read', 'public');
     return build();
   }
 
   const permissions = user.role.rolePermissions || [];
   const permissionCodes = permissions.map(rp => rp.permission.permissionCode);
-
-  // Super Admin has all permissions
-  if (user.role.roleCode === 'SUPER_ADMIN') {
-    can('manage', 'all');
-    return build();
-  }
 
   // Hospital Admin permissions - scoped to their hospital
   if (user.role.roleCode === 'HOSPITAL_ADMIN') {
@@ -238,7 +246,7 @@ const defineAbilitiesFor = (user) => {
     const [action, resource] = permissionCode.split('_');
     if (action && resource) {
       // Add hospital scope to all permissions except super admin
-      if (user.hospitalId && user.role.roleCode !== 'SUPER_ADMIN') {
+      if (user.hospitalId) {
         can(action.toLowerCase(), resource, { hospitalId: user.hospitalId });
       } else {
         can(action.toLowerCase(), resource);
