@@ -1,79 +1,45 @@
 {
   "method": "POST",
-  "url": "{{baseUrl}}/api/superadmin/hospitals",
+  "url": "{{baseUrl}}/api/superadmin/hospitals/64a1b2c3d4e5f6789abcdef2/admins",
   "headers": {
     "Content-Type": "application/json",
     "Authorization": "Bearer {{token}}"
   },
   "body": {
     "raw": {
-      "networkId": "64a1b2c3d4e5f6789abcdef1",
-      "name": "Apollo Hospital Mumbai",
-      "hospitalCode": "APL_MUM_001",
-      "hospitalType": "super_specialty",
-      "address": "Plot No. 251, LBS Marg, Bhandup West, Mumbai, Maharashtra 400078",
+      "personalDetails": {
+        "firstName": "Dr. Priya",
+        "lastName": "Sharma",
+        "email": "priya.sharma@apollomumbai.com",
+        "phone": "+91-9876543210",
+        "dateOfBirth": "1980-05-15",
+        "gender": "female",
+        "address": {
+          "street": "123 Bandra East",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pincode": "400051",
+          "country": "India"
+        }
+      },
       "contactDetails": {
-        "phone": "+91-22-30676767",
-        "email": "info@apollomumbai.com",
-        "website": "https://www.apollohospitals.com/mumbai",
-        "emergencyNumber": "+91-22-30676700"
-      },
-      "facilities": {
-        "beds": 500,
-        "icuBeds": 50,
-        "emergencyBeds": 25,
-        "operationTheaters": 12,
-        "laboratories": ["pathology", "radiology", "cardiology"],
-        "specialties": ["cardiology", "neurology", "oncology", "orthopedics"]
-      },
-      "capacityDetails": {
-        "totalBeds": 500,
-        "generalWardBeds": 300,
-        "privateRoomBeds": 150,
-        "icuBeds": 50,
-        "emergencyBeds": 25,
-        "operationTheaters": 12,
-        "ambulances": 8
-      },
-      "operationalHours": {
-        "opd": {
-          "monday": { "start": "08:00", "end": "20:00" },
-          "tuesday": { "start": "08:00", "end": "20:00" },
-          "wednesday": { "start": "08:00", "end": "20:00" },
-          "thursday": { "start": "08:00", "end": "20:00" },
-          "friday": { "start": "08:00", "end": "20:00" },
-          "saturday": { "start": "08:00", "end": "16:00" },
-          "sunday": { "start": "09:00", "end": "14:00" }
-        },
-        "emergency": "24x7",
-        "pharmacy": "24x7"
-      },
-      "emergencyServices": true,
-      "traumaCenterLevel": "Level 1",
-      "teachingHospital": true,
-      "researchFacility": true,
-      "telemedicineEnabled": true,
-      "accreditationDetails": {
-        "nabh": {
-          "certified": true,
-          "validUntil": "2025-12-31"
-        },
-        "jci": {
-          "certified": true,
-          "validUntil": "2024-06-30"
+        "alternatePhone": "+91-9876543211",
+        "emergencyContact": {
+          "name": "Rajesh Sharma",
+          "relationship": "spouse",
+          "phone": "+91-9876543212"
         }
       },
-      "licenseDetails": {
-        "hospitalLicense": {
-          "number": "MH/HOSP/2023/001",
-          "validUntil": "2025-03-31",
-          "authority": "Maharashtra Health Department"
-        }
+      "employmentDetails": {
+        "designation": "Hospital Administrator",
+        "department": "Administration",
+        "employmentType": "permanent",
+        "joiningDate": "2024-01-15",
+        "probationPeriodMonths": 6,
+        "noticePeriodDays": 30
       },
-      "timezone": "Asia/Kolkata",
-      "currency": "INR",
-      "supportedLanguages": ["en", "hi", "mr"]
+      "generatePassword": true,
+      "sendWelcomeEmail": true
     }
   }
 }
-
