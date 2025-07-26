@@ -1,40 +1,79 @@
 {
   "method": "POST",
-  "url": "{{baseUrl}}/api/superadmin/networks",
+  "url": "{{baseUrl}}/api/superadmin/hospitals",
   "headers": {
     "Content-Type": "application/json",
     "Authorization": "Bearer {{token}}"
   },
   "body": {
     "raw": {
-      "networkName": "Apollo Health Network",
-      "networkCode": "AHN001",
-      "headquartersAddress": "123 Medical Center Drive, Mumbai, Maharashtra 400001",
-      "registrationNumber": "REG123456789",
-      "taxId": "TAX987654321",
-      "gstin": "27ABCDE1234F1Z5",
-      "primaryContact": {
-        "name": "Dr. Rajesh Sharma",
-        "email": "contact@apollonetwork.com",
-        "phone": "+91-9876543210",
-        "designation": "Chief Executive Officer"
+      "networkId": "64a1b2c3d4e5f6789abcdef1",
+      "name": "Apollo Hospital Mumbai",
+      "hospitalCode": "APL_MUM_001",
+      "hospitalType": "super_specialty",
+      "address": "Plot No. 251, LBS Marg, Bhandup West, Mumbai, Maharashtra 400078",
+      "contactDetails": {
+        "phone": "+91-22-30676767",
+        "email": "info@apollomumbai.com",
+        "website": "https://www.apollohospitals.com/mumbai",
+        "emergencyNumber": "+91-22-30676700"
       },
-      "networkType": "corporate",
+      "facilities": {
+        "beds": 500,
+        "icuBeds": 50,
+        "emergencyBeds": 25,
+        "operationTheaters": 12,
+        "laboratories": ["pathology", "radiology", "cardiology"],
+        "specialties": ["cardiology", "neurology", "oncology", "orthopedics"]
+      },
+      "capacityDetails": {
+        "totalBeds": 500,
+        "generalWardBeds": 300,
+        "privateRoomBeds": 150,
+        "icuBeds": 50,
+        "emergencyBeds": 25,
+        "operationTheaters": 12,
+        "ambulances": 8
+      },
+      "operationalHours": {
+        "opd": {
+          "monday": { "start": "08:00", "end": "20:00" },
+          "tuesday": { "start": "08:00", "end": "20:00" },
+          "wednesday": { "start": "08:00", "end": "20:00" },
+          "thursday": { "start": "08:00", "end": "20:00" },
+          "friday": { "start": "08:00", "end": "20:00" },
+          "saturday": { "start": "08:00", "end": "16:00" },
+          "sunday": { "start": "09:00", "end": "14:00" }
+        },
+        "emergency": "24x7",
+        "pharmacy": "24x7"
+      },
+      "emergencyServices": true,
+      "traumaCenterLevel": "Level 1",
+      "teachingHospital": true,
+      "researchFacility": true,
+      "telemedicineEnabled": true,
       "accreditationDetails": {
         "nabh": {
           "certified": true,
-          "validUntil": "2025-12-31",
-          "certificateNumber": "NABH/2023/001"
+          "validUntil": "2025-12-31"
         },
         "jci": {
-          "certified": false
+          "certified": true,
+          "validUntil": "2024-06-30"
         }
       },
-      "regulatoryCompliance": {
-        "mci": true,
-        "stateHealthDept": true,
-        "pollutionBoard": true
-      }
+      "licenseDetails": {
+        "hospitalLicense": {
+          "number": "MH/HOSP/2023/001",
+          "validUntil": "2025-03-31",
+          "authority": "Maharashtra Health Department"
+        }
+      },
+      "timezone": "Asia/Kolkata",
+      "currency": "INR",
+      "supportedLanguages": ["en", "hi", "mr"]
     }
   }
 }
+

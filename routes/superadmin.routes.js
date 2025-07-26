@@ -8,7 +8,7 @@ const { requireRole, requirePermission } = require('../middleware/role.middlewar
 
 // Middleware to ensure user is super admin (define before using)
 function requireSuperAdmin(req, res, next) {
-  if (!req.user || req.user.role?.roleCode !== 'SUPER_ADMIN') {
+  if (!req.user || req.user.userType !== 'super_admin') {
     return res.status(403).json({
       success: false,
       message: 'Super admin access required'

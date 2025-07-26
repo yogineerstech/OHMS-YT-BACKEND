@@ -722,7 +722,9 @@ model MfaConfiguration {
 model UserSession {
   id                      String   @id @default(auto()) @map("_id") @db.ObjectId
   userId                  String   @db.ObjectId
-  sessionTokenHash        String?
+  accessToken             String?
+  refreshToken            String?
+  accessTokenHash         String?
   refreshTokenHash        String?
   ipAddress               String?
   userAgent               String?
@@ -731,6 +733,7 @@ model UserSession {
   loginTimestamp          DateTime @default(now())
   lastActivity            DateTime @default(now())
   expiresAt               DateTime?
+  refreshExpiresAt        DateTime?
   isActive                Boolean  @default(true)
   logoutTimestamp         DateTime?
   logoutReason            String?
@@ -1438,13 +1441,16 @@ model SuperAdminCredential {
 model SuperAdminSession {
   id                      String   @id @default(auto()) @map("_id") @db.ObjectId
   superAdminId            String   @db.ObjectId
-  sessionTokenHash        String
+  accessToken             String
+  refreshToken            String?
+  accessTokenHash         String
   refreshTokenHash        String?
   ipAddress               String?
   userAgent               String?
   loginTimestamp          DateTime @default(now())
   lastActivity            DateTime @default(now())
   expiresAt               DateTime
+  refreshExpiresAt        DateTime?
   isActive                Boolean  @default(true)
   logoutTimestamp         DateTime?
 

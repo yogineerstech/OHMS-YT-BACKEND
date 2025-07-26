@@ -596,7 +596,9 @@ exports.Prisma.MfaConfigurationScalarFieldEnum = {
 exports.Prisma.UserSessionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
-  sessionTokenHash: 'sessionTokenHash',
+  accessToken: 'accessToken',
+  refreshToken: 'refreshToken',
+  accessTokenHash: 'accessTokenHash',
   refreshTokenHash: 'refreshTokenHash',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
@@ -605,6 +607,7 @@ exports.Prisma.UserSessionScalarFieldEnum = {
   loginTimestamp: 'loginTimestamp',
   lastActivity: 'lastActivity',
   expiresAt: 'expiresAt',
+  refreshExpiresAt: 'refreshExpiresAt',
   isActive: 'isActive',
   logoutTimestamp: 'logoutTimestamp',
   logoutReason: 'logoutReason',
@@ -1075,13 +1078,16 @@ exports.Prisma.SuperAdminCredentialScalarFieldEnum = {
 exports.Prisma.SuperAdminSessionScalarFieldEnum = {
   id: 'id',
   superAdminId: 'superAdminId',
-  sessionTokenHash: 'sessionTokenHash',
+  accessToken: 'accessToken',
+  refreshToken: 'refreshToken',
+  accessTokenHash: 'accessTokenHash',
   refreshTokenHash: 'refreshTokenHash',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
   loginTimestamp: 'loginTimestamp',
   lastActivity: 'lastActivity',
   expiresAt: 'expiresAt',
+  refreshExpiresAt: 'refreshExpiresAt',
   isActive: 'isActive',
   logoutTimestamp: 'logoutTimestamp'
 };

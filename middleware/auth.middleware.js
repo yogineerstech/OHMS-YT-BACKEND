@@ -47,16 +47,37 @@ const authenticateJWT = (req, res, next) => {
     try {
       const token = req.headers.authorization?.replace('Bearer ', '');
       if (token) {
-        await prisma.userSession.updateMany({
-          where: {
-            userId: user.id,
-            sessionTokenHash: token,
-            isActive: true
-          },
-          data: {
-            lastActivity: new Date()
-          }
-        });
+        const { hashToken } = require('../utils/token.utils');
+        const tokenHash = hashToken(token);
+        
+        // Check if this is a super admin user (they don't have personalDetails)
+        const isSuperAdmin = !user.personalDetails;
+        
+        if (isSuperAdmin) {
+          // Update super admin session
+          await prisma.superAdminSession.updateMany({
+            where: {
+              superAdminId: user.id,
+              accessTokenHash: tokenHash,
+              isActive: true
+            },
+            data: {
+              lastActivity: new Date()
+            }
+          });
+        } else {
+          // Update staff session
+          await prisma.userSession.updateMany({
+            where: {
+              userId: user.id,
+              accessTokenHash: tokenHash,
+              isActive: true
+            },
+            data: {
+              lastActivity: new Date()
+            }
+          });
+        }
       }
     } catch (sessionError) {
       // Don't fail authentication if session update fails
@@ -97,16 +118,38 @@ const requireActiveSession = async (req, res, next) => {
       });
     }
 
-    const activeSession = await prisma.userSession.findFirst({
-      where: {
-        userId: req.user.id,
-        sessionTokenHash: token,
-        isActive: true,
-        expiresAt: {
-          gt: new Date()
+    const { hashToken } = require('../utils/token.utils');
+    const tokenHash = hashToken(token);
+
+    // Check if this is a super admin user
+    const isSuperAdmin = !req.user.personalDetails;
+    let activeSession = null;
+
+    if (isSuperAdmin) {
+      // Check super admin session
+      activeSession = await prisma.superAdminSession.findFirst({
+        where: {
+          superAdminId: req.user.id,
+          accessTokenHash: tokenHash,
+          isActive: true,
+          expiresAt: {
+            gt: new Date()
+          }
         }
-      }
-    });
+      });
+    } else {
+      // Check staff session
+      activeSession = await prisma.userSession.findFirst({
+        where: {
+          userId: req.user.id,
+          accessTokenHash: tokenHash,
+          isActive: true,
+          expiresAt: {
+            gt: new Date()
+          }
+        }
+      });
+    }
 
     if (!activeSession) {
       return res.status(401).json({

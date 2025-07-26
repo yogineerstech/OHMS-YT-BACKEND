@@ -83,22 +83,42 @@ passport.use(new JwtStrategy({
   secretOrKey: process.env.JWT_SECRET || 'your-secret-key'
 }, async (payload, done) => {
   try {
-    const user = await prisma.staff.findUnique({
-      where: { id: payload.userId },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true
+    let user = null;
+
+    if (payload.userType === 'super_admin') {
+      // Handle super admin authentication
+      user = await prisma.superAdmin.findUnique({
+        where: { id: payload.userId }
+      });
+      
+      // Add userType to the user object for middleware checks
+      if (user) {
+        user.userType = 'super_admin';
+      }
+    } else {
+      // Handle staff authentication
+      user = await prisma.staff.findUnique({
+        where: { id: payload.userId },
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: true
+                }
               }
             }
-          }
-        },
-        hospital: true,
-        department: true
+          },
+          hospital: true,
+          department: true
+        }
+      });
+      
+      // Add userType to the user object for middleware checks
+      if (user) {
+        user.userType = 'staff';
       }
-    });
+    }
 
     if (user && user.isActive) {
       return done(null, user);
