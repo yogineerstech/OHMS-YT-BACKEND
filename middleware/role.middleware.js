@@ -102,9 +102,22 @@ const scopeToUserHospital = (req, res, next) => {
   next();
 };
 
+const checkSuperAdminRole = (req, res, next) => {
+  // Check if user is super admin (either userType or no role but has email)
+  if (req.user && (req.user.userType === 'super_admin' || (req.user.email && !req.user.role))) {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: 'Super admin access required'
+  });
+};
+
 module.exports = {
   requireRole,
   requirePermission,
   requireHospitalAccess,
-  scopeToUserHospital
+  scopeToUserHospital,
+  checkSuperAdminRole
 };

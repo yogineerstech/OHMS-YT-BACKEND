@@ -7,21 +7,9 @@ class SuperAdminService {
    * Check if super admin already exists
    */
   async superAdminExists() {
-    const superAdminRole = await prisma.role.findFirst({
-      where: { roleCode: 'SUPER_ADMIN' }
+    const superAdmin = await prisma.superAdmin.findFirst({
+      where: { isActive: true }
     });
-
-    if (!superAdminRole) {
-      return false;
-    }
-
-    const superAdmin = await prisma.staff.findFirst({
-      where: { 
-        roleId: superAdminRole.id,
-        isActive: true
-      }
-    });
-
     return !!superAdmin;
   }
 
@@ -35,139 +23,96 @@ class SuperAdminService {
       throw new Error('Super admin already exists');
     }
 
-    // Check if email already exists
-    const existingUser = await prisma.staff.findFirst({
-      where: {
-        personalDetails: {
-          path: ['email'],
-          equals: userData.email
-        }
-      }
+    // Check if email already exists in SuperAdmin
+    const existingSuperAdmin = await prisma.superAdmin.findFirst({
+      where: { email: userData.email }
     });
 
-    if (existingUser) {
+    if (existingSuperAdmin) {
       throw new Error('Email already exists');
     }
 
-    // Find or create super admin role
-    let superAdminRole = await prisma.role.findFirst({
-      where: { roleCode: 'SUPER_ADMIN' }
+    // Also check if email exists in Staff (to prevent conflicts)
+    const allStaff = await prisma.staff.findMany({
+      select: {
+        id: true,
+        personalDetails: true
+      }
     });
+    
+    const existingStaff = allStaff.find(staff => 
+      staff.personalDetails && 
+      typeof staff.personalDetails === 'object' && 
+      staff.personalDetails.email === userData.email
+    );
 
-    if (!superAdminRole) {
-      superAdminRole = await prisma.role.create({
-        data: {
-          roleCode: 'SUPER_ADMIN',
-          roleName: 'Super Administrator',
-          description: 'System super administrator with full access',
-          isActive: true,
-          hospitalSpecific: false,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        }
-      });
+    if (existingStaff) {
+      throw new Error('Email already exists in staff records');
     }
 
     // Hash password
     const hashedPassword = await hashPassword(userData.password);
 
     // Create super admin user
-    const user = await prisma.staff.create({
+    const superAdmin = await prisma.superAdmin.create({
       data: {
-        staffCode: `SA001`, // Super admin code
-        personalDetails: {
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          email: userData.email,
-          phone: userData.phone || null
-        },
-        employmentDetails: {
-          employmentType: 'FULL_TIME',
-          employmentStatus: 'ACTIVE',
-          joiningDate: new Date().toISOString().split('T')[0]
-        },
-        roleId: superAdminRole.id,
-        isActive: true,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true
-              }
-            }
-          }
-        }
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phone: userData.phone || null,
+        isActive: true
       }
     });
 
-    // Create user credentials
-    await prisma.userCredential.create({
+    // Create super admin credentials
+    await prisma.superAdminCredential.create({
       data: {
-        userId: user.id,
+        superAdminId: superAdmin.id,
         credentialType: 'email',
         credentialDataHash: hashedPassword,
-        failedAttempts: 0,
         isActive: true,
-        createdAt: new Date(),
         lastUsed: new Date()
       }
     });
 
-    // Generate tokens using existing auth service
-    const tokens = await authService.generateTokens(user, ipAddress, userAgent);
+    // Generate tokens
+    const tokens = await authService.generateTokensForSuperAdmin(superAdmin, ipAddress, userAgent);
 
-    return { user, tokens };
+    return { user: superAdmin, tokens };
   }
 
   /**
-   * Authenticate super admin with additional checks
+   * Authenticate super admin
    */
+
   async authenticateSuperAdmin(email, password, ipAddress, userAgent) {
-    // Find user with credentials
-    const userCredential = await prisma.userCredential.findFirst({
+    // Find super admin by email
+    const superAdmin = await prisma.superAdmin.findFirst({
       where: {
-        credentialType: 'email',
-        user: {
-          personalDetails: {
-            path: ['email'],
-            equals: email
-          },
-          isActive: true,
-          role: {
-            roleCode: 'SUPER_ADMIN' // Only super admin
-          }
-        }
+        email: email,
+        isActive: true
       },
       include: {
-        user: {
-          include: {
-            role: {
-              include: {
-                rolePermissions: {
-                  include: {
-                    permission: true
-                  }
-                }
-              }
-            }
+        credentials: {
+          where: {
+            credentialType: 'email',
+            isActive: true
           }
         }
       }
     });
 
-    if (!userCredential) {
+    if (!superAdmin || !superAdmin.credentials.length) {
       throw new Error('Invalid email or password');
     }
 
-    const isValidPassword = await comparePassword(password, userCredential.credentialDataHash);
+    const credential = superAdmin.credentials[0];
+    
+    const isValidPassword = await comparePassword(password, credential.credentialDataHash);
     if (!isValidPassword) {
       // Update failed attempts
-      await prisma.userCredential.update({
-        where: { id: userCredential.id },
+      await prisma.superAdminCredential.update({
+        where: { id: credential.id },
         data: { 
           failedAttempts: { increment: 1 },
           lastUsed: new Date()
@@ -177,13 +122,13 @@ class SuperAdminService {
     }
 
     // Check if account is locked due to failed attempts
-    if (userCredential.failedAttempts >= 5) {
+    if (credential.failedAttempts >= 5) {
       throw new Error('Account is locked due to multiple failed attempts');
     }
 
     // Reset failed attempts on successful login
-    await prisma.userCredential.update({
-      where: { id: userCredential.id },
+    await prisma.superAdminCredential.update({
+      where: { id: credential.id },
       data: { 
         failedAttempts: 0,
         lastUsed: new Date()
@@ -191,9 +136,9 @@ class SuperAdminService {
     });
 
     // Generate tokens
-    const tokens = await authService.generateTokens(userCredential.user, ipAddress, userAgent);
+    const tokens = await authService.generateTokensForSuperAdmin(superAdmin, ipAddress, userAgent);
 
-    return { user: userCredential.user, tokens };
+    return { user: superAdmin, tokens };
   }
 
   /**
@@ -206,33 +151,37 @@ class SuperAdminService {
       totalStaff,
       activeStaff,
       totalPatients,
-      activePatients
+      activePatients,
+      totalSuperAdmins,
+      activeSuperAdmins
     ] = await Promise.all([
       prisma.hospital.count(),
       prisma.hospital.count({ where: { isActive: true } }),
       prisma.staff.count(),
       prisma.staff.count({ where: { isActive: true } }),
       prisma.patient.count(),
-      prisma.patient.count({ where: { isActive: true } })
+      prisma.patient.count({ where: { isActive: true } }),
+      prisma.superAdmin.count(),
+      prisma.superAdmin.count({ where: { isActive: true } })
     ]);
 
     return {
       hospitals: { total: totalHospitals, active: activeHospitals },
       staff: { total: totalStaff, active: activeStaff },
-      patients: { total: totalPatients, active: activePatients }
+      patients: { total: totalPatients, active: activePatients },
+      superAdmins: { total: totalSuperAdmins, active: activeSuperAdmins }
     };
   }
 
   /**
    * Get all hospitals with pagination
    */
-  async getAllHospitals({ page, limit, search, status }) {
+  async getAllHospitals({ page = 1, limit = 10, search, status }) {
     const where = {};
     
     if (search) {
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } }
+        { name: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -285,11 +234,9 @@ class SuperAdminService {
   }
 
   /**
-   * Get system logs (if you have logging implemented)
+   * Get system logs
    */
-  async getSystemLogs({ page, limit, level, startDate, endDate }) {
-    // This would depend on your logging implementation
-    // For now, returning mock data structure
+  async getSystemLogs({ page = 1, limit = 10, level, startDate, endDate }) {
     return {
       logs: [],
       pagination: {

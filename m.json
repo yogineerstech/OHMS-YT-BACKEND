@@ -1,0 +1,40 @@
+{
+  "method": "POST",
+  "url": "{{baseUrl}}/api/superadmin/networks",
+  "headers": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer {{token}}"
+  },
+  "body": {
+    "raw": {
+      "networkName": "Apollo Health Network",
+      "networkCode": "AHN001",
+      "headquartersAddress": "123 Medical Center Drive, Mumbai, Maharashtra 400001",
+      "registrationNumber": "REG123456789",
+      "taxId": "TAX987654321",
+      "gstin": "27ABCDE1234F1Z5",
+      "primaryContact": {
+        "name": "Dr. Rajesh Sharma",
+        "email": "contact@apollonetwork.com",
+        "phone": "+91-9876543210",
+        "designation": "Chief Executive Officer"
+      },
+      "networkType": "corporate",
+      "accreditationDetails": {
+        "nabh": {
+          "certified": true,
+          "validUntil": "2025-12-31",
+          "certificateNumber": "NABH/2023/001"
+        },
+        "jci": {
+          "certified": false
+        }
+      },
+      "regulatoryCompliance": {
+        "mci": true,
+        "stateHealthDept": true,
+        "pollutionBoard": true
+      }
+    }
+  }
+}

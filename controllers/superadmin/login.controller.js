@@ -4,6 +4,7 @@ const { defineAbilitiesFor } = require('../../config/casl');
 /**
  * Super admin login with additional security checks
  */
+
 const login = async (req, res) => {
   try {
     const { email, password, rememberMe = false } = req.body;

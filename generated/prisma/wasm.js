@@ -1049,6 +1049,43 @@ exports.Prisma.DiagnosisScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.SuperAdminScalarFieldEnum = {
+  id: 'id',
+  firstName: 'firstName',
+  lastName: 'lastName',
+  email: 'email',
+  phone: 'phone',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SuperAdminCredentialScalarFieldEnum = {
+  id: 'id',
+  superAdminId: 'superAdminId',
+  credentialType: 'credentialType',
+  credentialDataHash: 'credentialDataHash',
+  isActive: 'isActive',
+  createdAt: 'createdAt',
+  lastUsed: 'lastUsed',
+  failedAttempts: 'failedAttempts',
+  lockoutUntil: 'lockoutUntil'
+};
+
+exports.Prisma.SuperAdminSessionScalarFieldEnum = {
+  id: 'id',
+  superAdminId: 'superAdminId',
+  sessionTokenHash: 'sessionTokenHash',
+  refreshTokenHash: 'refreshTokenHash',
+  ipAddress: 'ipAddress',
+  userAgent: 'userAgent',
+  loginTimestamp: 'loginTimestamp',
+  lastActivity: 'lastActivity',
+  expiresAt: 'expiresAt',
+  isActive: 'isActive',
+  logoutTimestamp: 'logoutTimestamp'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -1090,7 +1127,10 @@ exports.Prisma.ModelName = {
   Disease: 'Disease',
   ExaminationTemplate: 'ExaminationTemplate',
   Examination: 'Examination',
-  Diagnosis: 'Diagnosis'
+  Diagnosis: 'Diagnosis',
+  SuperAdmin: 'SuperAdmin',
+  SuperAdminCredential: 'SuperAdminCredential',
+  SuperAdminSession: 'SuperAdminSession'
 };
 
 /**
