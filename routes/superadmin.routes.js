@@ -3,7 +3,6 @@ const router = express.Router();
 const superAdminController = require('../controllers/superadmin'); // Make sure this path exists
 const { checkAuthRateLimit, authenticateJWT, requireAuth } = require('../middleware/auth.middleware');
 const hospitalController = require('../controllers/superadmin/hospital.controller');
-const { authenticateToken } = require('../middleware/auth.middleware');
 const { requireRole, requirePermission } = require('../middleware/role.middleware');
 
 // Middleware to ensure user is super admin (define before using)
@@ -45,7 +44,7 @@ router.put('/hospitals/:hospitalId', hospitalController.updateHospital);
 // Hospital Admin routes - Only Super Admin
 router.post('/hospitals/:hospitalId/admins', hospitalController.createHospitalAdmin);
 router.get('/hospitals/:hospitalId/admins', hospitalController.getHospitalAdmins);
-router.post('/hospitals/admins/:adminId/reset-password', hospitalController.resetHospitalAdminPassword);
-router.post('/hospitals/admins/:adminId/deactivate', hospitalController.deactivateHospitalAdmin);
+router.post('/hospitals/:hospitalId/admins/:adminId/reset-password', hospitalController.resetHospitalAdminPassword);
+router.post('/hospitals/:hospitalId/admins/:adminId/deactivate', hospitalController.deactivateHospitalAdmin);
 
 module.exports = router;
