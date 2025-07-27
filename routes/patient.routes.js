@@ -3,9 +3,10 @@ const router = express.Router();
 
 // Import middlewares
 const { authenticateJWT, optionalAuth } = require('../middleware/auth.middleware');
-const { 
-  patientRegistrationUpload, 
-  handleUploadError 
+const {
+  patientRegistrationUpload,
+  handleUploadError,
+  parseFormDataJSON
 } = require('../middleware/upload.middleware');
 const {
   validatePatientRegistration,
@@ -41,6 +42,7 @@ router.post(
   '/register',
   patientRegistrationUpload,
   handleUploadError,
+  parseFormDataJSON,
   validateFileUploads,
   ...validatePatientRegistration,
   checkValidationResult,
@@ -53,10 +55,12 @@ router.post(
  * @access  Public
  * @body    Partial RegistrationData
  */
+
 router.post(
   '/register/quick',
   patientRegistrationUpload,
   handleUploadError,
+  parseFormDataJSON,
   validateFileUploads,
   ...validatePartialRegistration,
   checkValidationResult,
@@ -181,6 +185,7 @@ router.put(
   optionalAuth,
   patientRegistrationUpload,
   handleUploadError,
+  parseFormDataJSON,
   validateFileUploads,
   ...validatePatientId,
   ...validateCompleteRegistration,

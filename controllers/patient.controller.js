@@ -13,7 +13,7 @@ class PatientController {
   async registerPatient(req, res) {
     try {
       const hospitalId = req.user?.hospitalId || req.body.hospitalId;
-      
+
       if (!hospitalId) {
         return res.status(400).json({
           success: false,
@@ -24,13 +24,13 @@ class PatientController {
       // Process uploaded files
       const uploadedFiles = processUploadedFiles(req);
 
-      // Extract registration data from request body
+      // Extract registration data from request body (already parsed by parseFormDataJSON middleware)
       const registrationData = {
-        personal: JSON.parse(req.body.personal || '{}'),
-        contact: JSON.parse(req.body.contact || '{}'),
-        medical: JSON.parse(req.body.medical || '{}'),
-        insurance: JSON.parse(req.body.insurance || '{}'),
-        consent: JSON.parse(req.body.consent || '{}'),
+        personal: req.body.personal || {},
+        contact: req.body.contact || {},
+        medical: req.body.medical || {},
+        insurance: req.body.insurance || {},
+        consent: req.body.consent || {},
         uploadedFiles
       };
 
@@ -74,7 +74,7 @@ class PatientController {
   async quickRegisterPatient(req, res) {
     try {
       const hospitalId = req.user?.hospitalId || req.body.hospitalId;
-      
+
       if (!hospitalId) {
         return res.status(400).json({
           success: false,
@@ -85,10 +85,10 @@ class PatientController {
       // Process uploaded files
       const uploadedFiles = processUploadedFiles(req);
 
-      // Extract registration data from request body
+      // Extract registration data from request body (already parsed by parseFormDataJSON middleware)
       const registrationData = {
-        personal: JSON.parse(req.body.personal || '{}'),
-        contact: JSON.parse(req.body.contact || '{}'),
+        personal: req.body.personal || {},
+        contact: req.body.contact || {},
         uploadedFiles
       };
 
@@ -197,7 +197,7 @@ class PatientController {
       });
     } catch (error) {
       console.error('Error in getPatientById:', error);
-      
+
       if (error.message === 'Patient not found') {
         return res.status(404).json({
           success: false,
@@ -257,15 +257,15 @@ class PatientController {
 
       // Extract update data from request body
       const updateData = {};
-      
+
       if (req.body.personal) {
         updateData.personalDetails = JSON.parse(req.body.personal);
       }
-      
+
       if (req.body.contact) {
         updateData.contactDetails = JSON.parse(req.body.contact);
       }
-      
+
       if (req.body.medical) {
         const medical = JSON.parse(req.body.medical);
         updateData.allergies = medical.allergies;
@@ -275,11 +275,11 @@ class PatientController {
         updateData.medicationHistory = medical.medicationHistory;
         updateData.surgicalHistory = medical.surgicalHistory;
       }
-      
+
       if (req.body.insurance) {
         updateData.insuranceDetails = JSON.parse(req.body.insurance);
       }
-      
+
       if (req.body.consent) {
         const consent = JSON.parse(req.body.consent);
         updateData.consentStatus = consent;
@@ -472,7 +472,7 @@ class PatientController {
 
       // Generate 6-digit OTP
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      
+
       // Store OTP with expiration (5 minutes)
       const otpData = {
         otp,
@@ -481,7 +481,7 @@ class PatientController {
         expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
         attempts: 0
       };
-      
+
       otpStorage.set(phone, otpData);
 
       // In a real implementation, send SMS and email
@@ -553,7 +553,7 @@ class PatientController {
       if (otpData.otp !== otp) {
         otpData.attempts++;
         otpStorage.set(phone, otpData);
-        
+
         return res.status(400).json({
           success: false,
           message: 'Invalid OTP',
@@ -619,7 +619,7 @@ class PatientController {
   async deletePatientDocument(req, res) {
     try {
       const { patientId, documentType } = req.params;
-      
+
       // This would need implementation to remove specific documents
       res.status(200).json({
         success: true,
@@ -704,7 +704,7 @@ class PatientController {
       const { status, reason } = req.body;
 
       const validStatuses = ['active', 'inactive', 'archived', 'partial_registration'];
-      
+
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
           success: false,

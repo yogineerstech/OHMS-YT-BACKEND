@@ -27,7 +27,7 @@ createUploadDirs();
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let uploadPath = 'uploads/patients/';
-    
+
     // Determine upload path based on field name
     switch (file.fieldname) {
       case 'profilePhoto':
@@ -49,14 +49,14 @@ const storage = multer.diskStorage({
       default:
         uploadPath += 'documents/';
     }
-    
+
     const fullPath = path.join(process.cwd(), uploadPath);
-    
+
     // Ensure directory exists
     if (!fs.existsSync(fullPath)) {
       fs.mkdirSync(fullPath, { recursive: true });
     }
-    
+
     cb(null, fullPath);
   },
   filename: (req, file, cb) => {
@@ -67,7 +67,7 @@ const storage = multer.diskStorage({
     const baseName = path.basename(file.originalname, extension)
       .replace(/[^a-zA-Z0-9]/g, '_')
       .substring(0, 20);
-    
+
     const filename = `${file.fieldname}_${timestamp}_${randomString}_${baseName}${extension}`;
     cb(null, filename);
   }
@@ -110,7 +110,7 @@ const fileFilter = (req, file, cb) => {
   };
 
   const fieldConfig = allowedTypes[file.fieldname];
-  
+
   if (!fieldConfig) {
     return cb(new Error(`Upload not allowed for field: ${file.fieldname}`), false);
   }
@@ -218,7 +218,7 @@ const handleUploadError = (error, req, res, next) => {
 // Utility function to get file URL
 const getFileUrl = (req, filePath) => {
   if (!filePath) return null;
-  
+
   const baseUrl = `${req.protocol}://${req.get('host')}`;
   const relativePath = filePath.replace(process.cwd(), '').replace(/\\/g, '/');
   return `${baseUrl}${relativePath}`;
@@ -231,7 +231,7 @@ const processUploadedFiles = (req) => {
 
   Object.keys(files).forEach(fieldName => {
     const fileArray = files[fieldName];
-    
+
     if (fieldName === 'medicalRecords') {
       // Handle multiple medical records
       processedFiles[fieldName] = fileArray.map(file => ({
@@ -282,10 +282,55 @@ const cleanupUploadedFiles = (files) => {
   });
 };
 
+/**
+ * Middleware to parse JSON strings from form-data before validation
+ * This must run after file upload but before validation
+ */
+const parseFormDataJSON = (req, res, next) => {
+  try {
+    console.log('🔍 Raw req.body before parsing:', JSON.stringify(req.body, null, 2));
+
+    // Parse JSON strings from form-data
+    const fieldsToParsePatient = ['personal', 'contact', 'medical', 'insurance', 'consent'];
+
+    fieldsToParsePatient.forEach(field => {
+      if (req.body[field]) {
+        try {
+          console.log(`📝 Parsing field '${field}':`, req.body[field]);
+
+          // If it's already an object, skip parsing
+          if (typeof req.body[field] === 'object') {
+            console.log(`✅ Field '${field}' already an object, skipping parse`);
+            return;
+          }
+
+          // Parse JSON string
+          req.body[field] = JSON.parse(req.body[field]);
+          console.log(`✅ Successfully parsed '${field}':`, JSON.stringify(req.body[field], null, 2));
+
+        } catch (parseError) {
+          console.error(`❌ Error parsing ${field}:`, parseError.message);
+          // Set empty object if parsing fails
+          req.body[field] = {};
+        }
+      } else {
+        console.log(`⚠️ Field '${field}' is missing from req.body`);
+      }
+    });
+
+    console.log('🎯 Final parsed req.body:', JSON.stringify(req.body, null, 2));
+    next();
+  } catch (error) {
+    console.error('Error in parseFormDataJSON middleware:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   patientRegistrationUpload,
   handleUploadError,
   processUploadedFiles,
   cleanupUploadedFiles,
-  getFileUrl
+  getFileUrl,
+  parseFormDataJSON
 };
