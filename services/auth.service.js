@@ -15,18 +15,31 @@ class AuthService {
       throw new Error('Email and password are required');
     }
 
-    // Check if user already exists
-    const existingUser = await prisma.staff.findFirst({
-      where: {
-        personalDetails: {
-          path: ['email'],
-          equals: email.toLowerCase()
-        }
+    // Check if user already exists in Staff
+    const allStaff = await prisma.staff.findMany({
+      select: {
+        id: true,
+        personalDetails: true
       }
     });
+    
+    const existingStaff = allStaff.find(staff => 
+      staff.personalDetails && 
+      typeof staff.personalDetails === 'object' && 
+      staff.personalDetails.email === email.toLowerCase()
+    );
 
-    if (existingUser) {
+    if (existingStaff) {
       throw new Error('User with this email already exists');
+    }
+
+    // Check if email exists in SuperAdmin
+    const existingSuperAdmin = await prisma.superAdmin.findFirst({
+      where: { email: email.toLowerCase() }
+    });
+
+    if (existingSuperAdmin) {
+      throw new Error('Email already exists in super admin records');
     }
 
     // Validate role exists and is active
@@ -138,21 +151,14 @@ class AuthService {
   }
 
   /**
-   * Authenticate user with email and password
+   * Authenticate user with email and password (Staff)
    */
   async authenticateUser(email, password, ipAddress, userAgent) {
     // Find user with credentials
-    const userCredential = await prisma.userCredential.findFirst({
+    const userCredentials = await prisma.userCredential.findMany({
       where: {
         credentialType: 'email',
-        isActive: true,
-        user: {
-          personalDetails: {
-            path: ['email'],
-            equals: email.toLowerCase()
-          },
-          isActive: true
-        }
+        isActive: true
       },
       include: {
         user: {
@@ -172,6 +178,15 @@ class AuthService {
         }
       }
     });
+
+    // Filter by email and active user
+    const userCredential = userCredentials.find(cred => 
+      cred.user && 
+      cred.user.isActive &&
+      cred.user.personalDetails &&
+      typeof cred.user.personalDetails === 'object' &&
+      cred.user.personalDetails.email === email.toLowerCase()
+    );
 
     if (!userCredential) {
       throw new Error('Invalid email or password');
@@ -239,11 +254,82 @@ class AuthService {
   }
 
   /**
-   * Generate access and refresh tokens
+   * Authenticate SuperAdmin
+   */
+  async authenticateSuperAdmin(email, password, ipAddress, userAgent) {
+    // Find super admin by email
+    const superAdmin = await prisma.superAdmin.findFirst({
+      where: {
+        email: email.toLowerCase(),
+        isActive: true
+      },
+      include: {
+        credentials: {
+          where: {
+            credentialType: 'email',
+            isActive: true
+          }
+        }
+      }
+    });
+
+    if (!superAdmin || !superAdmin.credentials.length) {
+      throw new Error('Invalid email or password');
+    }
+
+    const credential = superAdmin.credentials[0];
+    
+    // Check if account is locked
+    if (credential.lockoutUntil && credential.lockoutUntil > new Date()) {
+      const lockoutMinutes = Math.ceil((credential.lockoutUntil - new Date()) / 60000);
+      throw new Error(`Account is locked. Try again in ${lockoutMinutes} minutes`);
+    }
+    
+    const isValidPassword = await comparePassword(password, credential.credentialDataHash);
+    if (!isValidPassword) {
+      // Update failed attempts
+      const failedAttempts = credential.failedAttempts + 1;
+      const lockoutUntil = failedAttempts >= 5 ? new Date(Date.now() + 15 * 60 * 1000) : null;
+
+      await prisma.superAdminCredential.update({
+        where: { id: credential.id },
+        data: { 
+          failedAttempts,
+          lockoutUntil,
+          lastUsed: new Date()
+        }
+      });
+
+      if (lockoutUntil) {
+        throw new Error('Account locked due to multiple failed attempts. Try again in 15 minutes');
+      }
+
+      throw new Error('Invalid email or password');
+    }
+
+    // Reset failed attempts on successful login
+    await prisma.superAdminCredential.update({
+      where: { id: credential.id },
+      data: { 
+        failedAttempts: 0,
+        lockoutUntil: null,
+        lastUsed: new Date()
+      }
+    });
+
+    // Generate tokens
+    const tokens = await this.generateTokensForSuperAdmin(superAdmin, ipAddress, userAgent);
+
+    return { user: superAdmin, tokens };
+  }
+
+  /**
+   * Generate access and refresh tokens for Staff
    */
   async generateTokens(user, ipAddress, userAgent) {
     const payload = {
       userId: user.id,
+      userType: 'staff',
       email: user.personalDetails?.email,
       roleId: user.roleId,
       hospitalId: user.hospitalId,
@@ -284,49 +370,118 @@ class AuthService {
   }
 
   /**
-   * Logout user and invalidate session
+   * Generate tokens for SuperAdmin
    */
-  async logout(userId, sessionToken, reason = 'user_logout') {
-    const result = await prisma.userSession.updateMany({
-      where: {
-        userId,
-        sessionTokenHash: sessionToken,
-        isActive: true
-      },
+  async generateTokensForSuperAdmin(superAdmin, ipAddress, userAgent) {
+    const payload = {
+      userId: superAdmin.id,
+      userType: 'super_admin',
+      email: superAdmin.email,
+      firstName: superAdmin.firstName,
+      lastName: superAdmin.lastName
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    // Calculate expiration times
+    const accessTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Create session
+    await prisma.superAdminSession.create({
       data: {
-        isActive: false,
-        logoutTimestamp: new Date(),
-        logoutReason: reason
+        superAdminId: superAdmin.id,
+        sessionTokenHash: accessToken,
+        refreshTokenHash: refreshToken,
+        ipAddress,
+        userAgent,
+        expiresAt: accessTokenExpiry,
       }
     });
 
-    return result.count > 0;
+    return {
+      accessToken,
+      refreshToken,
+      tokenType: 'Bearer',
+      expiresIn: 86400, // 24 hours in seconds
+      expiresAt: accessTokenExpiry,
+      refreshExpiresAt: refreshTokenExpiry
+    };
+  }
+
+  /**
+   * Logout user and invalidate session
+   */
+  async logout(userId, sessionToken, reason = 'user_logout', userType = 'staff') {
+    if (userType === 'super_admin') {
+      const result = await prisma.superAdminSession.updateMany({
+        where: {
+          superAdminId: userId,
+          sessionTokenHash: sessionToken,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date()
+        }
+      });
+      return result.count > 0;
+    } else {
+      const result = await prisma.userSession.updateMany({
+        where: {
+          userId,
+          sessionTokenHash: sessionToken,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date(),
+          logoutReason: reason
+        }
+      });
+      return result.count > 0;
+    }
   }
 
   /**
    * Logout from all devices
    */
-  async logoutAll(userId, reason = 'user_logout_all') {
-    const result = await prisma.userSession.updateMany({
-      where: {
-        userId,
-        isActive: true
-      },
-      data: {
-        isActive: false,
-        logoutTimestamp: new Date(),
-        logoutReason: reason
-      }
-    });
-
-    return result.count;
+  async logoutAll(userId, reason = 'user_logout_all', userType = 'staff') {
+    if (userType === 'super_admin') {
+      const result = await prisma.superAdminSession.updateMany({
+        where: {
+          superAdminId: userId,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date()
+        }
+      });
+      return result.count;
+    } else {
+      const result = await prisma.userSession.updateMany({
+        where: {
+          userId,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date(),
+          logoutReason: reason
+        }
+      });
+      return result.count;
+    }
   }
 
   /**
    * Refresh access token
    */
   async refreshToken(refreshToken) {
-    const session = await prisma.userSession.findFirst({
+    // Try to find session in both staff and super admin sessions
+    let session = await prisma.userSession.findFirst({
       where: {
         refreshTokenHash: refreshToken,
         isActive: true,
@@ -353,129 +508,230 @@ class AuthService {
       }
     });
 
+    let userType = 'staff';
+
+    if (!session) {
+      // Try super admin session
+      session = await prisma.superAdminSession.findFirst({
+        where: {
+          refreshTokenHash: refreshToken,
+          isActive: true,
+          expiresAt: {
+            gt: new Date()
+          }
+        },
+        include: {
+          superAdmin: true
+        }
+      });
+      userType = 'super_admin';
+    }
+
     if (!session) {
       throw new Error('Invalid or expired refresh token');
     }
 
-    if (!session.user.isActive) {
+    const user = userType === 'super_admin' ? session.superAdmin : session.user;
+
+    if (!user.isActive) {
       throw new Error('User account is deactivated');
     }
 
     // Generate new tokens
-    const tokens = await this.generateTokens(
-      session.user, 
-      session.ipAddress, 
-      session.userAgent
-    );
+    const tokens = userType === 'super_admin' 
+      ? await this.generateTokensForSuperAdmin(user, session.ipAddress, session.userAgent)
+      : await this.generateTokens(user, session.ipAddress, session.userAgent);
 
     // Invalidate old session
-    await prisma.userSession.update({
-      where: { id: session.id },
-      data: {
-        isActive: false,
-        logoutTimestamp: new Date(),
-        logoutReason: 'token_refresh'
-      }
-    });
+    if (userType === 'super_admin') {
+      await prisma.superAdminSession.update({
+        where: { id: session.id },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date()
+        }
+      });
+    } else {
+      await prisma.userSession.update({
+        where: { id: session.id },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date(),
+          logoutReason: 'token_refresh'
+        }
+      });
+    }
 
     return {
-      user: session.user,
-      tokens
+      user,
+      tokens,
+      userType
     };
   }
 
   /**
    * Get user sessions
    */
-  async getUserSessions(userId) {
-    return await prisma.userSession.findMany({
-      where: {
-        userId,
-        isActive: true
-      },
-      select: {
-        id: true,
-        ipAddress: true,
-        deviceInfo: true,
-        loginTimestamp: true,
-        lastActivity: true,
-        sessionType: true
-      },
-      orderBy: {
-        lastActivity: 'desc'
-      }
-    });
+  async getUserSessions(userId, userType = 'staff') {
+    if (userType === 'super_admin') {
+      return await prisma.superAdminSession.findMany({
+        where: {
+          superAdminId: userId,
+          isActive: true
+        },
+        select: {
+          id: true,
+          ipAddress: true,
+          userAgent: true,
+          loginTimestamp: true,
+          lastActivity: true
+        },
+        orderBy: {
+          lastActivity: 'desc'
+        }
+      });
+    } else {
+      return await prisma.userSession.findMany({
+        where: {
+          userId,
+          isActive: true
+        },
+        select: {
+          id: true,
+          ipAddress: true,
+          deviceInfo: true,
+          loginTimestamp: true,
+          lastActivity: true,
+          sessionType: true
+        },
+        orderBy: {
+          lastActivity: 'desc'
+        }
+      });
+    }
   }
 
   /**
    * Terminate specific session
    */
-  async terminateSession(userId, sessionId) {
-    const result = await prisma.userSession.updateMany({
-      where: {
-        id: sessionId,
-        userId,
-        isActive: true
-      },
-      data: {
-        isActive: false,
-        logoutTimestamp: new Date(),
-        logoutReason: 'session_terminated'
-      }
-    });
-
-    return result.count > 0;
+  async terminateSession(userId, sessionId, userType = 'staff') {
+    if (userType === 'super_admin') {
+      const result = await prisma.superAdminSession.updateMany({
+        where: {
+          id: sessionId,
+          superAdminId: userId,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date()
+        }
+      });
+      return result.count > 0;
+    } else {
+      const result = await prisma.userSession.updateMany({
+        where: {
+          id: sessionId,
+          userId,
+          isActive: true
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date(),
+          logoutReason: 'session_terminated'
+        }
+      });
+      return result.count > 0;
+    }
   }
 
   /**
    * Change user password
    */
-  async changePassword(userId, oldPassword, newPassword) {
-    // Get current credentials
-    const credential = await prisma.userCredential.findFirst({
-      where: {
-        userId,
-        credentialType: 'email',
-        isPrimary: true,
-        isActive: true
+  async changePassword(userId, oldPassword, newPassword, userType = 'staff') {
+    if (userType === 'super_admin') {
+      // Get current super admin credentials
+      const credential = await prisma.superAdminCredential.findFirst({
+        where: {
+          superAdminId: userId,
+          credentialType: 'email',
+          isActive: true
+        }
+      });
+
+      if (!credential) {
+        throw new Error('User credentials not found');
       }
-    });
 
-    if (!credential) {
-      throw new Error('User credentials not found');
-    }
-
-    // Verify old password
-    const isValidOldPassword = await comparePassword(oldPassword, credential.credentialDataHash);
-    if (!isValidOldPassword) {
-      throw new Error('Current password is incorrect');
-    }
-
-    // Hash new password
-    const hashedNewPassword = await hashPassword(newPassword);
-    const newSalt = crypto.randomBytes(32).toString('hex');
-
-    // Update password and add to history
-    const passwordHistory = credential.passwordHistory || [];
-    passwordHistory.push({
-      hash: credential.credentialDataHash,
-      changedAt: new Date()
-    });
-
-    await prisma.userCredential.update({
-      where: { id: credential.id },
-      data: {
-        credentialDataHash: hashedNewPassword,
-        salt: newSalt,
-        passwordHistory: passwordHistory.slice(-5), // Keep last 5 passwords
-        lastUsed: new Date()
+      // Verify old password
+      const isValidOldPassword = await comparePassword(oldPassword, credential.credentialDataHash);
+      if (!isValidOldPassword) {
+        throw new Error('Current password is incorrect');
       }
-    });
 
-    // Invalidate all other sessions except current
-    await this.logoutAll(userId, 'password_changed');
+      // Hash new password
+      const hashedNewPassword = await hashPassword(newPassword);
 
-    return true;
+      // Update password
+      await prisma.superAdminCredential.update({
+        where: { id: credential.id },
+        data: {
+          credentialDataHash: hashedNewPassword,
+          lastUsed: new Date()
+        }
+      });
+
+      // Invalidate all sessions
+      await this.logoutAll(userId, 'password_changed', 'super_admin');
+
+      return true;
+    } else {
+      // Get current credentials
+      const credential = await prisma.userCredential.findFirst({
+        where: {
+          userId,
+          credentialType: 'email',
+          isPrimary: true,
+          isActive: true
+        }
+      });
+
+      if (!credential) {
+        throw new Error('User credentials not found');
+      }
+
+      // Verify old password
+      const isValidOldPassword = await comparePassword(oldPassword, credential.credentialDataHash);
+      if (!isValidOldPassword) {
+        throw new Error('Current password is incorrect');
+      }
+
+      // Hash new password
+      const hashedNewPassword = await hashPassword(newPassword);
+      const newSalt = crypto.randomBytes(32).toString('hex');
+
+      // Update password and add to history
+      const passwordHistory = credential.passwordHistory || [];
+      passwordHistory.push({
+        hash: credential.credentialDataHash,
+        changedAt: new Date()
+      });
+
+      await prisma.userCredential.update({
+        where: { id: credential.id },
+        data: {
+          credentialDataHash: hashedNewPassword,
+          salt: newSalt,
+          passwordHistory: passwordHistory.slice(-5), // Keep last 5 passwords
+          lastUsed: new Date()
+        }
+      });
+
+      // Invalidate all other sessions
+      await this.logoutAll(userId, 'password_changed');
+
+      return true;
+    }
   }
 
   /**
@@ -557,21 +813,35 @@ class AuthService {
    * Clean up expired sessions
    */
   async cleanupExpiredSessions() {
-    const result = await prisma.userSession.updateMany({
-      where: {
-        isActive: true,
-        expiresAt: {
-          lt: new Date()
+    const [staffResult, superAdminResult] = await Promise.all([
+      prisma.userSession.updateMany({
+        where: {
+          isActive: true,
+          expiresAt: {
+            lt: new Date()
+          }
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date(),
+          logoutReason: 'session_expired'
         }
-      },
-      data: {
-        isActive: false,
-        logoutTimestamp: new Date(),
-        logoutReason: 'session_expired'
-      }
-    });
+      }),
+      prisma.superAdminSession.updateMany({
+        where: {
+          isActive: true,
+          expiresAt: {
+            lt: new Date()
+          }
+        },
+        data: {
+          isActive: false,
+          logoutTimestamp: new Date()
+        }
+      })
+    ]);
 
-    return result.count;
+    return staffResult.count + superAdminResult.count;
   }
 }
 
