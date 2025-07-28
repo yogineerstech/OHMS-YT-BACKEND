@@ -22,7 +22,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Serve uploaded files statically
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check endpoint
+// Health check endpointnpm
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,

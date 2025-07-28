@@ -855,9 +855,9 @@ model Patient {
   hospitalId              String   @db.ObjectId
   patientNumber           String?  @unique
   mrn                     String?  @unique
-  abhaId                  String?  @unique
-  qrCode                  String?  @unique
-  barcode                 String?  @unique
+  abhaId                  String?
+  qrCode                  String?  
+  barcode                 String?  
   
   // Personal Information
   personalDetails         Json?    // name, DOB, gender, etc.
