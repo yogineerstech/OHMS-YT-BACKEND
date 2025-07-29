@@ -96,30 +96,22 @@ const validatePatientRegistration = [
     .normalizeEmail(),
 
   body('contact.address.street')
-    .notEmpty()
-    .withMessage('Street address is required')
+    .optional()
     .isLength({ min: 5, max: 200 })
     .withMessage('Street address must be between 5 and 200 characters'),
 
   body('contact.address.city')
-    .notEmpty()
-    .withMessage('City is required')
+    .optional()
     .isLength({ min: 2, max: 100 })
-    .withMessage('City must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('City can only contain letters and spaces'),
+    .withMessage('City must be between 2 and 100 characters'),
 
   body('contact.address.state')
-    .notEmpty()
-    .withMessage('State is required')
+    .optional()
     .isLength({ min: 2, max: 100 })
-    .withMessage('State must be between 2 and 100 characters')
-    .matches(/^[a-zA-Z\s]+$/)
-    .withMessage('State can only contain letters and spaces'),
+    .withMessage('State must be between 2 and 100 characters'),
 
   body('contact.address.pincode')
-    .notEmpty()
-    .withMessage('Pincode is required')
+    .optional()
     .matches(/^\d{6}$/)
     .withMessage('Pincode must be a 6-digit number'),
 
@@ -141,9 +133,8 @@ const validatePatientRegistration = [
     .withMessage('Emergency contact phone must be a valid 10-digit Indian mobile number'),
 
   body('contact.emergencyContact.relationship')
-    .notEmpty()
-    .withMessage('Emergency contact relationship is required')
-    .isIn(['spouse', 'parent', 'child', 'sibling', 'friend', 'other'])
+    .optional()
+    .isIn(['spouse', 'parent', 'child', 'sibling', 'friend', 'colleague', 'other'])
     .withMessage('Invalid relationship type'),
 
   // Medical History Validation (optional sections)
@@ -159,8 +150,8 @@ const validatePatientRegistration = [
 
   body('medical.allergies.*.severity')
     .optional()
-    .isIn(['mild', 'moderate', 'severe'])
-    .withMessage('Allergy severity must be mild, moderate, or severe'),
+    .isIn(['mild', 'moderate', 'severe', 'life-threatening'])
+    .withMessage('Allergy severity must be mild, moderate, severe, or life-threatening'),
 
   body('medical.chronicConditions')
     .optional()
@@ -209,7 +200,7 @@ const validatePatientRegistration = [
     .notEmpty()
     .withMessage('Privacy consent is required')
     .isBoolean()
-    .withMessage('Privacy consent must be boolean'),
+    .withMessage('Privacy consent must be true or false'),
 
   body('consent.dataProcessingConsent')
     .notEmpty()
@@ -308,8 +299,8 @@ const validateCompleteRegistration = [
 
   body('medical.allergies.*.severity')
     .optional()
-    .isIn(['mild', 'moderate', 'severe'])
-    .withMessage('Allergy severity must be mild, moderate, or severe'),
+    .isIn(['mild', 'moderate', 'severe', 'life-threatening'])
+    .withMessage('Allergy severity must be mild, moderate, severe, or life-threatening'),
 
   body('medical.chronicConditions')
     .optional()
@@ -353,7 +344,7 @@ const validateCompleteRegistration = [
     .notEmpty()
     .withMessage('Privacy consent is required')
     .isBoolean()
-    .withMessage('Privacy consent must be boolean'),
+    .withMessage('Privacy consent must be true or false'),
 
   body('consent.dataProcessingConsent')
     .notEmpty()
@@ -440,9 +431,16 @@ const validatePatientUpdate = [
     .withMessage('Emergency contact phone must be a valid 10-digit Indian mobile number'),
 
   body('contact.emergencyContact.relationship')
-    .optional()
-    .isIn(['spouse', 'parent', 'child', 'sibling', 'friend', 'other'])
-    .withMessage('Invalid relationship type')
+    .custom((value, { req }) => {
+    const validValues = ['spouse', 'parent', 'child', 'sibling', 'friend', 'colleague', 'other'];
+    if (!value || !validValues.includes(value)) {
+      req.body.contact.emergencyContact.relationship = 'other'; // Assign default value
+    }
+    return true;
+  })
+    // .optional()
+    // .isIn(['spouse', 'parent', 'child', 'sibling', 'friend', 'colleague', 'other'])
+    // .withMessage('Invalid relationship type')
 ];
 
 /**
@@ -601,21 +599,22 @@ const validateStatsQuery = [
  */
 const checkValidationResult = (req, res, next) => {
   const errors = validationResult(req);
-  
+
   if (!errors.isEmpty()) {
-    const formattedErrors = errors.array().map(error => ({
-      field: error.path,
-      message: error.msg,
-      value: error.value
-    }));
+    const formattedErrors = errors.array().reduce((acc, error) => {
+      if (!acc[error.param]) {
+        acc[error.param] = error.msg; // Combine errors for the same field
+      }
+      return acc;
+    }, {});
 
     return res.status(400).json({
       success: false,
       message: 'Validation failed',
-      errors: formattedErrors
+      errors: formattedErrors, // Send concise error messages
     });
   }
-  
+
   next();
 };
 

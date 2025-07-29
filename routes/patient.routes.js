@@ -40,14 +40,24 @@ const patientController = require('../controllers/patient.controller');
  */
 router.post(
   '/register',
+  ...validatePatientRegistration,
+  checkValidationResult,
   patientRegistrationUpload,
   handleUploadError,
   parseFormDataJSON,
   validateFileUploads,
-  ...validatePatientRegistration,
-  checkValidationResult,
   patientController.registerPatient
 );
+// router.post(
+//   '/register',
+//   patientRegistrationUpload,
+//   handleUploadError,
+//   parseFormDataJSON,
+//   validateFileUploads,
+//   ...validatePatientRegistration,
+//   checkValidationResult,
+//   patientController.registerPatient
+// );
 
 /**
  * @route   POST /api/patients/register/quick
