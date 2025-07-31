@@ -24,7 +24,7 @@ class PatientController {
       // Process uploaded files
       const uploadedFiles = processUploadedFiles(req);
 
-      // Extract registration data from request body (already parsed by parseFormDataJSON middleware)
+      // Extract registration data from request body using the new frontend structure
       const registrationData = {
         personal: req.body.personal || {},
         contact: req.body.contact || {},
@@ -34,7 +34,7 @@ class PatientController {
         uploadedFiles
       };
 
-      // Create patient
+      // Create patient with full registration
       const patient = await patientService.createPatient(registrationData, hospitalId);
 
       res.status(201).json({
@@ -48,6 +48,9 @@ class PatientController {
             mrn: patient.mrn,
             personalDetails: patient.personalDetails,
             contactDetails: patient.contactDetails,
+            medicalDetails: patient.medicalDetails,
+            insuranceDetails: patient.insuranceDetails,
+            consentDetails: patient.consentDetails,
             patientStatus: patient.patientStatus
           }
         }
@@ -82,17 +85,18 @@ class PatientController {
         });
       }
 
-      // Process uploaded files
+      // Process uploaded files (profile photo will be stored as text/filename)
       const uploadedFiles = processUploadedFiles(req);
 
-      // Extract registration data from request body (already parsed by parseFormDataJSON middleware)
+      // Extract only personal and contact data from the new frontend structure
+      // Note: Medical, insurance, and consent data are ignored for quick registration
       const registrationData = {
         personal: req.body.personal || {},
         contact: req.body.contact || {},
         uploadedFiles
       };
 
-      // Create quick registration patient
+      // Create quick registration patient (only personal + contact data saved)
       const patient = await patientService.createQuickPatient(registrationData, hospitalId);
 
       res.status(201).json({

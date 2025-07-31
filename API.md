@@ -5,11 +5,22 @@
 - Postman installed
 - Valid authentication token (for protected routes)
 
-## Authentication Setup
+# Hospital Management System - Complete API Documentation
 
-### Get Access Token for Protected Routes
+## Prerequisites
+- Base URL: `http://localhost:3000` (adjust port as needed)
+- Postman installed
+- Valid authentication tokens for protected routes
 
-**POST** `/api/auth/login`
+## Authentication Overview
+
+The system has two types of authentication:
+1. **Super Admin Authentication**: For system administration and hospital management
+2. **Hospital Staff Authentication**: For hospital-specific operations (patients, appointments, etc.)
+
+### Get Super Admin Token
+
+**POST** `/api/superadmin/login`
 
 **Headers:**
 - `Content-Type`: `application/json`
@@ -17,39 +28,218 @@
 **Body:**
 ```json
 {
-  "email": "admin@hospital.com",
-  "password": "password123",
+  "email": "superadmin@ohms.com",
+  "password": "SuperAdmin@123",
   "rememberMe": false
 }
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "user": {
-      "id": "staff_id_here",
-      "personalDetails": {
-        "firstName": "John",
-        "lastName": "Admin",
-        "email": "admin@hospital.com"
-      },
-      "role": {
-        "roleCode": "HOSPITAL_ADMIN"
-      },
-      "hospitalId": "hospital_id_here"
-    },
-    "tokens": {
-      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-      "expiresAt": "2025-07-28T10:00:00.000Z"
-    }
+### Get Hospital Staff Token
+
+**Note**: Hospital staff authentication endpoints are not yet implemented in the current codebase. Patient operations can be performed without authentication in the current implementation, or you can use the Super Admin token for testing protected routes.
+
+**Copy the `accessToken` for Authorization header: `Bearer YOUR_ACCESS_TOKEN_HERE`**
+
+---
+
+## Patient Data Structure Format
+
+### Important Notes for Frontend Integration:
+
+1. **Content-Type**: All patient registration/update endpoints use `multipart/form-data` to support file uploads
+2. **JSON Parsing**: Complex objects (personal, contact, medical, insurance, consent) must be sent as JSON strings in form-data fields
+3. **File Uploads**: Files are uploaded as actual file objects in the form-data
+4. **Hospital Context**: `hospitalId` is required for all patient operations
+
+### Data Structure Breakdown:
+
+#### Personal Details Object:
+```javascript
+personal: {
+  "title": "Mr/Ms/Dr",           // Required
+  "firstName": "string",         // Required
+  "lastName": "string",          // Required  
+  "dateOfBirth": "YYYY-MM-DD",   // Required
+  "gender": "male/female/other", // Required
+  "bloodGroup": "A+/B+/O+/AB+/A-/B-/O-/AB-", // Optional
+  "nationality": "string",       // Optional
+  "preferredLanguage": "string", // Optional
+  "maritalStatus": "single/married/divorced/widowed", // Optional
+  "occupation": "string",        // Optional
+  "religion": "string",          // Optional
+  "abhaId": "12-3456-7890-1234"  // Optional (ABHA format)
+}
+```
+
+#### Contact Details Object:
+```javascript
+contact: {
+  "primaryPhone": "10-digit number",      // Required
+  "secondaryPhone": "10-digit number",    // Optional
+  "whatsappPhone": "10-digit number",     // Optional
+  "email": "valid@email.com",             // Required for full registration
+  "currentAddress": {                     // Required
+    "street": "string",
+    "city": "string", 
+    "state": "string",
+    "pinCode": "6-digit code",
+    "country": "string"
+  },
+  "permanentAddress": {                   // Required
+    "street": "string",
+    "city": "string",
+    "state": "string", 
+    "pinCode": "6-digit code",
+    "country": "string"
+  },
+  "sameAsCurrent": true/false,           // If true, permanentAddress = currentAddress
+  "emergencyContact": {                   // Required
+    "name": "string",
+    "phone": "10-digit number",
+    "relationship": "spouse/parent/sibling/friend/other",
+    "email": "valid@email.com",           // Optional
+    "address": "string"                   // Optional
   }
 }
 ```
 
-**Copy the `accessToken` for Authorization header: `Bearer YOUR_ACCESS_TOKEN_HERE`**
+#### Medical History Object (Full Registration Only):
+```javascript
+medical: {
+  "allergies": [                          // Optional array
+    {
+      "id": "unique_id",
+      "name": "Allergy name",
+      "severity": "mild/moderate/severe"
+    }
+  ],
+  "chronicConditions": ["string array"],  // Optional
+  "currentMedications": [                 // Optional array
+    {
+      "id": "unique_id",
+      "name": "Medicine name",
+      "dosage": "dosage info",
+      "frequency": "frequency info"
+    }
+  ],
+  "previousSurgeries": [                  // Optional array
+    {
+      "id": "unique_id", 
+      "procedure": "Surgery name",
+      "date": "YYYY-MM-DD",
+      "hospital": "Hospital name",
+      "complications": "string"
+    }
+  ],
+  "familyHistory": ["string array"],      // Optional
+  "lifestyle": {                          // Optional
+    "smoking": "never/former/current",
+    "drinking": "never/occasional/regular",
+    "exercise": "none/light/moderate/heavy", 
+    "screenTime": "0-2h/2-4h/4-6h/6+h",
+    "eyeStrain": "none/mild/moderate/severe"
+  },
+  "vitals": {                            // Optional
+    "height": number,                     // in cm
+    "weight": number,                     // in kg
+    "bmi": number,                        // calculated
+    "bloodPressure": "120/80"             // string format
+  }
+}
+```
+
+#### Insurance Details Object (Full Registration Only):
+```javascript
+insurance: {
+  "hasInsurance": true/false,             // Required
+  "paymentMethod": "cash/insurance/card", // Required
+  "provider": "string",                   // Required if hasInsurance = true
+  "policyNumber": "string",               // Required if hasInsurance = true
+  "policyType": "string",                 // Optional
+  "policyHolderName": "string",           // Required if hasInsurance = true
+  "policyHolderRelation": "self/spouse/parent/child", // Required if hasInsurance = true
+  "validityDate": "YYYY-MM-DD",           // Required if hasInsurance = true
+  "coverageAmount": number,               // Optional
+  "coPaymentPercentage": number,          // Optional
+  "tpaName": "string",                    // Optional
+  "requiresPreAuth": ["string array"],    // Optional
+  "emergencyContacts": [                  // Optional array
+    {
+      "id": "unique_id",
+      "name": "string",
+      "relationship": "string",
+      "primaryPhone": "10-digit number",
+      "secondaryPhone": "10-digit number", // Optional
+      "email": "valid@email.com",          // Optional
+      "address": "string",                 // Optional
+      "preferredContactMethod": "phone/email/whatsapp",
+      "availableHours": "string",          // Optional
+      "livesWithPatient": true/false,      // Optional
+      "hasKeys": true/false,               // Optional
+      "priority": number                   // 1, 2, 3, etc.
+    }
+  ]
+}
+```
+
+#### Consent Object:
+```javascript
+consent: {
+  // Quick Registration (Required)
+  "treatmentConsent": true/false,         // Required for quick
+  "dataProcessingConsent": true/false,    // Required for quick  
+  "communicationConsent": true/false,     // Required for quick
+  
+  // Full Registration (Optional)
+  "medicalConsent": true/false,           // Optional
+  "privacyPolicy": true/false,            // Optional
+  "marketingConsent": true/false,         // Optional
+  "appointmentReminders": {               // Optional
+    "sms": true/false,
+    "email": true/false,
+    "whatsapp": true/false
+  },
+  "healthNewsletters": {                  // Optional
+    "daily": true/false,
+    "weekly": true/false,
+    "monthly": true/false
+  },
+  "promotionalOffers": true/false,        // Optional
+  "researchParticipation": true/false,    // Optional
+  "photoVideoConsent": true/false,        // Optional
+  "abhaIdVerified": true/false,           // Optional
+  "otpVerified": true/false,              // Optional
+  "digitalSignature": "base64_string",    // Optional
+  "consentDate": "ISO_date_string",       // Required
+  "consentBy": "Patient name",            // Required
+  "consentMethod": "digital/physical"     // Optional
+}
+```
+
+### Postman Setup Instructions:
+
+1. **Create New Request**: POST method
+2. **Set Headers**: 
+   - `Authorization: Bearer YOUR_TOKEN` (for protected routes)
+   - Do NOT set `Content-Type` (Postman auto-sets for form-data)
+3. **Body Tab**: Select "form-data"
+4. **Add Text Fields**: Add keys like `personal`, `contact`, etc. and paste JSON strings as values
+5. **Add File Fields**: Add keys like `profilePhoto`, `governmentId`, etc. and select actual files
+6. **Hospital ID**: Add `hospitalId` as text field with actual hospital ID
+
+### Example Postman Form-Data Setup:
+
+```
+Key: personal          Type: Text    Value: {"title":"Mr","firstName":"John","lastName":"Doe"...}
+Key: contact           Type: Text    Value: {"primaryPhone":"9876543210","email":"john@test.com"...}
+Key: medical           Type: Text    Value: {"allergies":[],"chronicConditions":[]...}
+Key: insurance         Type: Text    Value: {"hasInsurance":false,"paymentMethod":"cash"...}
+Key: consent           Type: Text    Value: {"treatmentConsent":true,"dataProcessingConsent":true...}
+Key: hospitalId        Type: Text    Value: actual_hospital_id_from_database
+Key: profilePhoto      Type: File    Value: [Select image file]
+Key: governmentId      Type: File    Value: [Select PDF/image file] 
+Key: medicalRecords    Type: File    Value: [Select file(s)]
+```
 
 ---
 
@@ -978,6 +1168,558 @@ files: [Upload new document files]
 6. **Hospital Scope**: Ensure data is scoped to correct hospital
 7. **Status Transitions**: Test different patient status updates
 8. **Search Functionality**: Test various search parameters
+
+---
+
+## Super Admin API Testing
+
+### 1. Check Super Admin Exists
+
+**GET** `/api/superadmin/exists`
+
+**Headers:**
+- `Content-Type`: `application/json`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "exists": false,
+    "message": "No super admin found. Initial setup required."
+  }
+}
+```
+
+---
+
+### 2. Initial Super Admin Setup
+
+**POST** `/api/superadmin/setup`
+
+**Headers:**
+- `Content-Type`: `application/json`
+
+**Body:**
+```json
+{
+  "personalDetails": {
+    "firstName": "Super",
+    "lastName": "Admin",
+    "email": "superadmin@ohms.com",
+    "phone": "9999999999"
+  },
+  "password": "SuperAdmin@123",
+  "confirmPassword": "SuperAdmin@123"
+}
+```
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Super admin setup completed successfully",
+  "data": {
+    "user": {
+      "id": "superadmin_id_here",
+      "personalDetails": {
+        "firstName": "Super",
+        "lastName": "Admin",
+        "email": "superadmin@ohms.com"
+      },
+      "role": {
+        "roleCode": "SUPER_ADMIN"
+      }
+    },
+    "tokens": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expiresAt": "2025-07-31T10:00:00.000Z"
+    }
+  }
+}
+```
+
+---
+
+### 3. Super Admin Login
+
+**POST** `/api/superadmin/login`
+
+**Headers:**
+- `Content-Type`: `application/json`
+
+**Body:**
+```json
+{
+  "email": "superadmin@ohms.com",
+  "password": "SuperAdmin@123",
+  "rememberMe": true
+}
+```
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Super admin login successful",
+  "data": {
+    "user": {
+      "id": "superadmin_id_here",
+      "personalDetails": {
+        "firstName": "Super",
+        "lastName": "Admin",
+        "email": "superadmin@ohms.com",
+        "phone": "9999999999"
+      },
+      "role": {
+        "roleCode": "SUPER_ADMIN"
+      }
+    },
+    "tokens": {
+      "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "expiresAt": "2025-07-31T10:00:00.000Z"
+    },
+    "permissions": [
+      {
+        "action": "manage",
+        "subject": "all"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 4. Get System Statistics
+
+**GET** `/api/superadmin/stats`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "System statistics retrieved successfully",
+  "data": {
+    "hospitals": {
+      "total": 25,
+      "active": 20,
+      "inactive": 5
+    },
+    "patients": {
+      "total": 1250,
+      "activeRegistrations": 1100,
+      "quickRegistrations": 150
+    },
+    "staff": {
+      "total": 350,
+      "hospitalAdmins": 25,
+      "doctors": 150,
+      "nurses": 175
+    },
+    "systemHealth": {
+      "status": "healthy",
+      "uptime": "15 days",
+      "memoryUsage": "65%",
+      "diskUsage": "40%"
+    }
+  }
+}
+```
+
+---
+
+### 5. Get All Hospitals
+
+**GET** `/api/superadmin/hospitals`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Hospitals retrieved successfully",
+  "data": {
+    "hospitals": [
+      {
+        "id": "hospital_id_1",
+        "name": "City General Hospital",
+        "status": "active",
+        "contactInfo": {
+          "email": "admin@citygeneral.com",
+          "phone": "9876543210"
+        },
+        "address": {
+          "street": "123 Main Street",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pinCode": "400001"
+        },
+        "createdAt": "2025-01-15T06:00:00.000Z",
+        "adminCount": 2,
+        "patientCount": 450
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 6. Create Hospital Network
+
+**POST** `/api/superadmin/networks`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "name": "Metro Health Network",
+  "description": "Network of hospitals in metropolitan area",
+  "region": "Western India",
+  "contactInfo": {
+    "email": "network@metrohealth.com",
+    "phone": "9876543210"
+  }
+}
+```
+
+---
+
+### 7. Get Hospital Networks
+
+**GET** `/api/superadmin/networks`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Hospital networks retrieved successfully",
+  "data": {
+    "networks": [
+      {
+        "id": "network_id_1",
+        "name": "Metro Health Network",
+        "description": "Network of hospitals in metropolitan area",
+        "region": "Western India",
+        "hospitalCount": 5,
+        "createdAt": "2025-01-01T06:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 8. Create Hospital
+
+**POST** `/api/superadmin/hospitals`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "name": "New Medical Center",
+  "type": "multi_specialty",
+  "licenseNumber": "MH/2025/001",
+  "contactInfo": {
+    "email": "admin@newmedical.com",
+    "phone": "9876543210",
+    "website": "https://newmedical.com"
+  },
+  "address": {
+    "street": "456 Health Street",
+    "city": "Pune",
+    "state": "Maharashtra",
+    "pinCode": "411001",
+    "country": "India"
+  },
+  "networkId": "network_id_1",
+  "settings": {
+    "patientRegistrationEnabled": true,
+    "onlineAppointments": true,
+    "maxPatients": 1000
+  }
+}
+```
+
+---
+
+### 9. Get Hospital by ID
+
+**GET** `/api/superadmin/hospitals/:hospitalId`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**URL Example:** `/api/superadmin/hospitals/64f123abc456def789`
+
+---
+
+### 10. Update Hospital
+
+**PUT** `/api/superadmin/hospitals/:hospitalId`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body (partial updates allowed):**
+```json
+{
+  "name": "Updated Medical Center",
+  "contactInfo": {
+    "phone": "9876543299",
+    "email": "updated@newmedical.com"
+  },
+  "settings": {
+    "maxPatients": 1500
+  }
+}
+```
+
+---
+
+### 11. Toggle Hospital Status
+
+**PATCH** `/api/superadmin/hospitals/:hospitalId/status`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "status": "inactive",
+  "reason": "Maintenance period"
+}
+```
+
+---
+
+### 12. Create Hospital Admin
+
+**POST** `/api/superadmin/hospitals/:hospitalId/admins`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "personalDetails": {
+    "firstName": "Admin",
+    "lastName": "User",
+    "email": "admin@hospital.com",
+    "phone": "9876543210"
+  },
+  "password": "Admin@123",
+  "role": "HOSPITAL_ADMIN"
+}
+```
+
+---
+
+### 13. Get Hospital Admins
+
+**GET** `/api/superadmin/hospitals/:hospitalId/admins`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+---
+
+### 14. Reset Hospital Admin Password
+
+**POST** `/api/superadmin/hospitals/:hospitalId/admins/:adminId/reset-password`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "newPassword": "NewAdmin@123"
+}
+```
+
+---
+
+### 15. Deactivate Hospital Admin
+
+**POST** `/api/superadmin/hospitals/:hospitalId/admins/:adminId/deactivate`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Body:**
+```json
+{
+  "reason": "Staff resignation"
+}
+```
+
+---
+
+### 16. Get System Logs
+
+**GET** `/api/superadmin/logs`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_SUPER_ADMIN_TOKEN`
+
+**Query Parameters:**
+- `level=error`
+- `startDate=2025-07-01`
+- `endDate=2025-07-31`
+- `page=1`
+- `limit=50`
+
+---
+
+## Additional Patient APIs
+
+### 17. Bulk Import Patients
+
+**POST** `/api/patients/bulk-import`
+
+**Headers:**
+- `Content-Type`: `multipart/form-data`
+- `Authorization`: `Bearer YOUR_ACCESS_TOKEN`
+
+**Form Data:**
+```
+file: [CSV/Excel file with patient data]
+```
+
+---
+
+### 18. Export Patients Data
+
+**GET** `/api/patients/export`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_ACCESS_TOKEN`
+
+**Query Parameters:**
+- `format=csv` or `format=excel`
+- `status=active`
+- `startDate=2025-07-01`
+- `endDate=2025-07-31`
+
+**Response:** File download (CSV or Excel format)
+
+---
+
+### 19. Delete Patient Document
+
+**DELETE** `/api/patients/:patientId/documents/:documentType`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_ACCESS_TOKEN`
+
+**URL Example:** `/api/patients/64f123abc456def789/documents/governmentId`
+
+---
+
+### 20. Get Patient Visits Summary
+
+**GET** `/api/patients/:patientId/visits-summary`
+
+**Headers:**
+- `Authorization`: `Bearer YOUR_ACCESS_TOKEN`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Patient visits summary retrieved successfully",
+  "data": {
+    "totalVisits": 15,
+    "lastVisit": "2025-07-25T10:00:00.000Z",
+    "upcomingAppointments": 2,
+    "visitHistory": [
+      {
+        "date": "2025-07-25T10:00:00.000Z",
+        "type": "consultation",
+        "doctor": "Dr. Smith",
+        "department": "Cardiology"
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 21. Merge Patient Records
+
+**POST** `/api/patients/:patientId/merge`
+
+**Headers:**
+- `Content-Type`: `application/json`
+- `Authorization`: `Bearer YOUR_ACCESS_TOKEN`
+
+**Body:**
+```json
+{
+  "targetPatientId": "64f456def789abc123",
+  "reason": "Duplicate registration detected"
+}
+```
+
+---
+
+## System Utility APIs
+
+### 22. Health Check
+
+**GET** `/api/health`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "OHMS Backend API is running",
+  "timestamp": "2025-07-31T06:00:00.000Z"
+}
+```
+
+---
+
+### 23. Test Route
+
+**GET** `/api/test`
+
+**Expected Response:**
+```json
+{
+  "success": true,
+  "message": "Test route working",
+  "timestamp": "2025-07-31T06:00:00.000Z"
+}
+```
+
+---
 
 ### File Upload Limits:
 - Profile Photo: 5MB (JPEG, PNG, WebP)

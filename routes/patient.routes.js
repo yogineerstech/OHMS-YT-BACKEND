@@ -22,7 +22,9 @@ const {
   validateStatusUpdate,
   validateStatsQuery,
   validateFileUploads,
-  checkValidationResult
+  checkValidationResult,
+  handleEmergencyContactFallback,
+  validateEmergencyContactExists
 } = require('../middleware/validation.middleware');
 
 // Import controller
@@ -40,12 +42,14 @@ const patientController = require('../controllers/patient.controller');
  */
 router.post(
   '/register',
-  ...validatePatientRegistration,
-  checkValidationResult,
   patientRegistrationUpload,
   handleUploadError,
   parseFormDataJSON,
+  handleEmergencyContactFallback,
+  ...validatePatientRegistration,
+  checkValidationResult,
   validateFileUploads,
+  validateEmergencyContactExists,
   patientController.registerPatient
 );
 // router.post(
@@ -71,6 +75,7 @@ router.post(
   patientRegistrationUpload,
   handleUploadError,
   parseFormDataJSON,
+  handleEmergencyContactFallback,
   validateFileUploads,
   ...validatePartialRegistration,
   checkValidationResult,
