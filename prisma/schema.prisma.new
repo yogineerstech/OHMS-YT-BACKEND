@@ -1,0 +1,570 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================= 
+// CORE ORGANIZATION & INFRASTRUCTURE 
+// ============================================================================= 
+
+// Hospital Network Management
+model HospitalNetwork {
+  id                      String   @id @default(cuid())
+  networkName             String
+  networkCode             String?  @unique
+  headquartersAddress     String?
+  registrationNumber      String?
+  taxId                   String?
+  gstin                   String?
+  primaryContact          Json?
+  configuration           Json?
+  networkType             String?  // corporate, government, trust, private
+  accreditationDetails    Json?
+  regulatoryCompliance    Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospitals               Hospital[]
+
+  @@map("hospital_networks")
+}
+
+// Enhanced Hospitals with Comprehensive Details
+model Hospital {
+  id                      String   @id @default(cuid())
+  networkId               String?
+  name                    String
+  hospitalCode            String?  @unique
+  hospitalType            String?  // general, specialty, super_specialty, clinic, diagnostic, rehabilitation, maternity, psychiatric, oncology
+  accreditationDetails    Json?
+  licenseDetails          Json?
+  address                 String?
+  coordinates             Json?    // Point coordinates
+  contactDetails          Json?
+  facilities              Json?
+  capacityDetails         Json?
+  operationalHours        Json?
+  emergencyServices       Boolean  @default(false)
+  traumaCenterLevel       String?
+  teachingHospital        Boolean  @default(false)
+  researchFacility        Boolean  @default(false)
+  telemedicineEnabled     Boolean  @default(false)
+  digitalHealthIntegration Json?
+  abdmRegistration        Json?
+  configuration           Json?
+  timezone                String   @default("Asia/Kolkata")
+  currency                String   @default("INR")
+  supportedLanguages      String[] @default(["en", "hi"])
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  network                 HospitalNetwork? @relation(fields: [networkId], references: [id])
+  departments             Department[]
+  floors                  Floor[]
+  rooms                   Room[]
+  beds                    Bed[]
+  wards                   Ward[]
+  staff                   Staff[]
+  patients                Patient[]
+  patientVisits           PatientVisit[]
+  examinationTemplates    ExaminationTemplate[]
+
+  @@map("hospitals")
+}
+
+// Department Categories and Hierarchy
+model DepartmentCategory {
+  id                      String   @id @default(cuid())
+  categoryName            String
+  categoryCode            String?  @unique
+  description             String?
+  icon                    String?
+  colorCode               String?
+  parentCategoryId        String?
+  hierarchyLevel          Int      @default(1)
+  specializationType      String?  // medical, surgical, diagnostic, administrative
+
+  // Relations
+  parentCategory          DepartmentCategory? @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id])
+  subCategories           DepartmentCategory[] @relation("CategoryHierarchy")
+  departments             Department[]
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("department_categories")
+}
+
+// Departments with Enhanced Functionality
+model Department {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  categoryId              String?
+  floorId                 String?
+  parentDepartmentId      String?
+  name                    String
+  code                    String?
+  description             String?
+  departmentType          String?  // inpatient, outpatient, emergency, diagnostic, support, administrative
+  specialtyType           String?  // primary_care, specialty, super_specialty
+  services                Json?
+  operatingHours          Json?
+  contactInfo             Json?
+  staffCapacity           Json?
+  equipmentInventory      Json?
+  roomAllocations         Json?
+  appointmentSettings     Json?
+  emergencyProtocols      Json?
+  qualityMetrics          Json?
+  budgetAllocation        Float?
+  revenueTarget           Float?
+  performanceKPIs         Json?
+  accreditations          Json?
+  certifications          Json?
+  protocols               Json?
+  guidelines              Json?
+  isActive                Boolean  @default(true)
+  isEmergencyDepartment   Boolean  @default(false)
+  acceptsWalkIns          Boolean  @default(true)
+  requiresReferral        Boolean  @default(false)
+  supportsTelemedicine    Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  category                DepartmentCategory? @relation(fields: [categoryId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  parentDepartment        Department? @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id])
+  subDepartments          Department[] @relation("DepartmentHierarchy")
+  staff                   Staff[]
+  rooms                   Room[]
+  beds                    Bed[]
+  patientVisits           PatientVisit[]
+  examinationTemplates    ExaminationTemplate[]
+
+  @@map("departments")
+}
+
+// Enhanced Floor Management
+model Floor {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  floorNumber             Int
+  floorName               String?
+  floorType               String?  // ground, general, icu, ot, admin, basement, rooftop
+  totalArea               Float?
+  usableArea              Float?
+  capacity                Json?
+  facilities              Json?
+  accessibilityFeatures   Json?
+  emergencyExits          Json?
+  fireSystemDetails       Json?
+  securityFeatures        Json?
+  maintenanceSchedule     Json?
+  energyEfficiencyRating  String?
+  environmentalControls   Json?
+  isActive                Boolean  @default(true)
+  isRestricted            Boolean  @default(false)
+  accessLevel             String?  // public, staff, authorized, vip
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  departments             Department[]
+  rooms                   Room[]
+  wards                   Ward[]
+
+  @@unique([hospitalId, floorNumber])
+  @@map("floors")
+}
+
+// Comprehensive Room Management
+model Room {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  departmentId            String?
+  floorId                 String?
+  wardId                  String?
+  roomNumber              String
+  roomName                String?
+  roomType                String?  // patient, ot, icu, consultation, diagnostic, procedure, storage, office
+  category                String?  // general, private, semi_private, deluxe, suite, isolation
+  capacity                Int      @default(1)
+  currentOccupancy        Int      @default(0)
+  area                    Float?
+  amenities               Json?
+  equipment               Json?
+  facilities              Json?
+  accessibilityFeatures   Json?
+  pricing                 Json?
+  maintenanceSchedule     Json?
+  cleaningProtocol        Json?
+  infectionControlMeasures Json?
+  emergencyEquipment      Json?
+  communicationSystems    Json?
+  entertainmentSystems    Json?
+  climateControl          Json?
+  lighting                Json?
+  powerOutlets            Json?
+  networkConnectivity     Json?
+  securityFeatures        Json?
+  privacyLevel            String?
+  isActive                Boolean  @default(true)
+  isOccupied              Boolean  @default(false)
+  isUnderMaintenance      Boolean  @default(false)
+  isQuarantined           Boolean  @default(false)
+  lastSanitized           DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  ward                    Ward? @relation(fields: [wardId], references: [id])
+  beds                    Bed[]
+
+  @@unique([hospitalId, roomNumber])
+  @@map("rooms")
+}
+
+// Enhanced Bed Management with Real-time Tracking
+model Bed {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  roomId                  String?
+  departmentId            String?
+  wardId                  String?
+  patientId               String?
+  bedNumber               String
+  bedType                 String?  // standard, icu, nicu, maternity, bariatric, pediatric, isolation
+  bedCategory             String?  // general, private, semi_private, economy, premium
+  bedStatus               String   @default("available") // available, occupied, maintenance, reserved, blocked
+  features                Json?
+  equipment               Json?
+  monitoring              Json?
+  safety                  Json?
+  comfort                 Json?
+  pricing                 Json?
+  lastMaintenance         DateTime?
+  lastCleaning            DateTime?
+  maintenanceSchedule     Json?
+  cleaningProtocol        Json?
+  isActive                Boolean  @default(true)
+  isElectronic            Boolean  @default(false)
+  hasOxygen               Boolean  @default(false)
+  hasSuction              Boolean  @default(false)
+  hasMonitor              Boolean  @default(false)
+  hasIV                   Boolean  @default(false)
+  weight                  Float?
+  dimensions              Json?
+  manufacturer            String?
+  model                   String?
+  serialNumber            String?
+  warrantyExpiry          DateTime?
+  acquisitionDate         DateTime?
+  lastInspection          DateTime?
+  nextInspection          DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  room                    Room? @relation(fields: [roomId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  ward                    Ward? @relation(fields: [wardId], references: [id])
+  patient                 Patient? @relation(fields: [patientId], references: [id])
+
+  @@unique([hospitalId, bedNumber])
+  @@map("beds")
+}
+
+// Ward Management System
+model Ward {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  floorId                 String?
+  wardNumber              String
+  wardName                String
+  wardType                String?  // general, icu, nicu, maternity, pediatric, surgical, medical, isolation
+  capacity                Int
+  currentOccupancy        Int      @default(0)
+  nursingStation          Json?
+  facilities              Json?
+  equipment               Json?
+  protocols               Json?
+  staffAllocation         Json?
+  operatingHours          Json?
+  visitingHours           Json?
+  securityLevel           String?
+  accessControl           Json?
+  emergencyProcedures     Json?
+  infectionControl        Json?
+  qualityMetrics          Json?
+  patientSatisfaction     Json?
+  isActive                Boolean  @default(true)
+  isIsolationWard         Boolean  @default(false)
+  supportsVentilation     Boolean  @default(false)
+  hasNegativePressure     Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  rooms                   Room[]
+  beds                    Bed[]
+
+  @@unique([hospitalId, wardNumber])
+  @@map("wards")
+}
+
+// Comprehensive Staff Management with Role Hierarchies
+model Staff {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  departmentId            String?
+  employeeId              String?  @unique
+  personalDetails         Json?
+  contactDetails          Json?
+  emergencyContacts       Json?
+  identificationDocuments Json?
+  professionalDetails     Json?
+  qualifications          Json?
+  certifications          Json?
+  licenses                Json?
+  specializations         Json?
+  experience              Json?
+  performanceMetrics      Json?
+  employmentDetails       Json?
+  contractDetails         Json?
+  payrollInformation      Json?
+  benefits                Json?
+  workSchedule            Json?
+  permissions             Json?
+  accessLevel             String?
+  systemAccess            Json?
+  loginCredentials        Json?
+  role                    Json?
+  status                  String   @default("active") // active, inactive, on_leave, terminated
+  isActive                Boolean  @default(true)
+  canLogin                Boolean  @default(true)
+  lastLogin               DateTime?
+  passwordChangedAt       DateTime?
+  twoFactorEnabled        Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  patientVisits           PatientVisit[]
+
+  @@map("staff")
+}
+
+// Enhanced Patient Management System
+model Patient {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  patientNumber           String?  @unique
+  mrn                     String?  @unique
+  abhaId                  String?
+  qrCode                  String?  
+  barcode                 String?  
+  
+  // Personal Information
+  personalDetails         Json?    // name, DOB, gender, etc.
+  contactDetails          Json?    // phone, email, address
+  emergencyContacts       Json?
+  demographics            Json?
+  identificationDocuments Json?
+  
+  // Medical Information
+  bloodGroup              String?
+  rhFactor                String?
+  allergies               Json?
+  chronicConditions       Json?
+  familyHistory           Json?
+  socialHistory           Json?
+  medicalHistory          Json?
+  surgicalHistory         Json?
+  medicationHistory       Json?
+  immunizationRecords     Json?
+  
+  // Insurance and Financial
+  insuranceDetails        Json?
+  financialInformation    Json?
+  paymentPreferences      Json?
+  creditLimit             Float?
+  outstandingAmount       Float?
+  
+  // Preferences and Settings
+  preferences             Json?
+  communicationPreferences Json?
+  culturalConsiderations  Json?
+  dietaryRestrictions     Json?
+  religiousPreferences    Json?
+  languagePreferences     String[]
+  
+  // Risk Assessment
+  riskFactors             Json?
+  fallRiskScore           Int?
+  infectionRiskLevel      String?
+  medicationRiskFactors   Json?
+  
+  // Digital Health
+  biometricData           Json?
+  wearableDeviceData      Json?
+  digitalHealthRecords    Json?
+  telemedicinePreferences Json?
+  
+  // Privacy and Consent
+  consentStatus           Json?
+  privacySettings         Json?
+  dataSharingPreferences  Json?
+  
+  // Status and Classification
+  patientType             String?  // regular, vip, staff, emergency, charity
+  patientStatus           String   @default("active")
+  mobilityStatus          String?
+  mentalStatus            String?
+  communicationBarriers   Json?
+  
+  // Quality and Safety
+  patientSafetyAlerts     Json?
+  clinicalAlerts          Json?
+  drugInteractionAlerts   Json?
+  
+  // Analytics and Tracking
+  visitFrequency          Json?
+  loyaltyProgramStatus    Json?
+  satisfactionScores      Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  beds                    Bed[]
+  patientVisits           PatientVisit[]
+
+  @@map("patients")
+}
+
+// Patient Visit Management with Comprehensive Tracking
+model PatientVisit {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  patientId               String
+  visitNumber             String?  @unique
+  appointmentId           String?
+  visitType               String?  // walk_in, scheduled, emergency, follow_up, consultation
+  visitCategory           String?  // outpatient, inpatient, emergency, day_care
+  departmentId            String?
+  doctorId                String?
+  nurseId                 String?
+  attendingStaff          Json?
+  
+  // Visit Details
+  chiefComplaint          String?
+  visitReason             String?
+  referralSource          String?
+  priority                String?  // routine, urgent, emergency
+  status                  String   @default("scheduled") // scheduled, in_progress, completed, cancelled, no_show
+  
+  // Timing
+  scheduledDateTime       DateTime?
+  checkinTime             DateTime?
+  consultationStartTime   DateTime?
+  consultationEndTime     DateTime?
+  dischargeTime           DateTime?
+  totalWaitTime           Int?     // in minutes
+  totalConsultationTime   Int?     // in minutes
+  
+  // Clinical Information
+  vitalSigns              Json?
+  symptoms                Json?
+  diagnosis               Json?
+  treatment               Json?
+  prescriptions           Json?
+  procedures              Json?
+  labTests                Json?
+  imaging                 Json?
+  
+  // Administrative
+  insurance               Json?
+  billing                 Json?
+  payments                Json?
+  documents               Json?
+  notes                   Json?
+  followUpInstructions    Json?
+  nextAppointment         Json?
+  
+  // Quality and Satisfaction
+  satisfactionRating      Int?
+  feedback                Json?
+  qualityMetrics          Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  patient                 Patient @relation(fields: [patientId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  doctor                  Staff? @relation(fields: [doctorId], references: [id])
+
+  @@map("patient_visits")
+}
+
+// Examination Templates for Standardized Care
+model ExaminationTemplate {
+  id                      String   @id @default(cuid())
+  hospitalId              String
+  departmentId            String?
+  templateName            String
+  templateType            String?  // general, specialty, procedure, screening
+  specialtyArea           String?
+  description             String?
+  sections                Json?
+  fields                  Json?
+  validations             Json?
+  scoring                 Json?
+  defaultValues           Json?
+  conditionalLogic        Json?
+  printLayout             Json?
+  digitalSignature        Boolean  @default(false)
+  version                 String   @default("1.0")
+  isActive                Boolean  @default(true)
+  isDefault               Boolean  @default(false)
+  createdBy               String?
+  approvedBy              String?
+  approvalDate            DateTime?
+  lastModified            DateTime?
+  usageCount              Int      @default(0)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+
+  @@map("examination_templates")
+}

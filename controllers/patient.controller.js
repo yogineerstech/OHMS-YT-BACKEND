@@ -21,8 +21,11 @@ class PatientController {
         });
       }
 
-      // Process uploaded files
-      const uploadedFiles = processUploadedFiles(req);
+      console.log('🏥 Full patient registration request:', {
+        hospitalId,
+        hasFiles: !!req.files,
+        bodyKeys: Object.keys(req.body)
+      });
 
       // Extract registration data from request body using the new frontend structure
       const registrationData = {
@@ -30,30 +33,16 @@ class PatientController {
         contact: req.body.contact || {},
         medical: req.body.medical || {},
         insurance: req.body.insurance || {},
-        consent: req.body.consent || {},
-        uploadedFiles
+        consent: req.body.consent || {}
       };
 
       // Create patient with full registration
-      const patient = await patientService.createPatient(registrationData, hospitalId);
+      const result = await patientService.createPatient(registrationData, req.files, hospitalId);
 
       res.status(201).json({
         success: true,
         message: 'Patient registered successfully',
-        data: {
-          patient: {
-            id: patient.id,
-            patientNumber: patient.patientNumber,
-            qrCode: patient.qrCode,
-            mrn: patient.mrn,
-            personalDetails: patient.personalDetails,
-            contactDetails: patient.contactDetails,
-            medicalDetails: patient.medicalDetails,
-            insuranceDetails: patient.insuranceDetails,
-            consentDetails: patient.consentDetails,
-            patientStatus: patient.patientStatus
-          }
-        }
+        data: result
       });
     } catch (error) {
       // Clean up uploaded files if registration fails
@@ -85,38 +74,26 @@ class PatientController {
         });
       }
 
-      // Process uploaded files (profile photo will be stored as text/filename)
-      const uploadedFiles = processUploadedFiles(req);
+      console.log('🚀 Quick patient registration request:', {
+        hospitalId,
+        hasFiles: !!req.files,
+        bodyKeys: Object.keys(req.body)
+      });
 
-      // Extract only personal and contact data from the new frontend structure
-      // Note: Medical, insurance, and consent data are ignored for quick registration
+      // Extract registration data for quick registration
       const registrationData = {
         personal: req.body.personal || {},
         contact: req.body.contact || {},
-        uploadedFiles
+        consent: req.body.consent || {}
       };
 
-      // Create quick registration patient (only personal + contact data saved)
-      const patient = await patientService.createQuickPatient(registrationData, hospitalId);
+      // Create quick registration patient
+      const result = await patientService.createQuickPatient(registrationData, req.files, hospitalId);
 
       res.status(201).json({
         success: true,
         message: 'Quick registration completed successfully',
-        data: {
-          patient: {
-            id: patient.id,
-            patientNumber: patient.patientNumber,
-            qrCode: patient.qrCode,
-            mrn: patient.mrn,
-            personalDetails: patient.personalDetails,
-            contactDetails: patient.contactDetails,
-            patientStatus: patient.patientStatus
-          },
-          nextSteps: {
-            message: 'Complete your registration by providing medical history, insurance details, and consent information',
-            completeRegistrationUrl: `/api/patients/${patient.id}/complete`
-          }
-        }
+        data: result
       });
     } catch (error) {
       // Clean up uploaded files if registration fails

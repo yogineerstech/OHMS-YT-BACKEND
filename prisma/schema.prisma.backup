@@ -1,0 +1,1455 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================= 
+// CORE ORGANIZATION & INFRASTRUCTURE 
+// ============================================================================= 
+
+// Hospital Network Management
+model HospitalNetwork {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  networkName             String
+  networkCode             String?  @unique
+  headquartersAddress     String?
+  registrationNumber      String?
+  taxId                   String?
+  gstin                   String?
+  primaryContact          Json?
+  configuration           Json?
+  networkType             String?  // corporate, government, trust, private
+  accreditationDetails    Json?
+  regulatoryCompliance    Json?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospitals               Hospital[]
+
+  @@map("hospital_networks")
+}
+
+// Enhanced Hospitals with Comprehensive Details
+model Hospital {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  networkId               String?  @db.ObjectId
+  name                    String
+  hospitalCode            String?  @unique
+  hospitalType            String?  // general, specialty, super_specialty, clinic, diagnostic, rehabilitation, maternity, psychiatric, oncology
+  accreditationDetails    Json?
+  licenseDetails          Json?
+  address                 String?
+  coordinates             Json?    // Point coordinates
+  contactDetails          Json?
+  facilities              Json?
+  capacityDetails         Json?
+  operationalHours        Json?
+  emergencyServices       Boolean  @default(false)
+  traumaCenterLevel       String?
+  teachingHospital        Boolean  @default(false)
+  researchFacility        Boolean  @default(false)
+  telemedicineEnabled     Boolean  @default(false)
+  digitalHealthIntegration Json?
+  abdmRegistration        Json?
+  configuration           Json?
+  timezone                String   @default("Asia/Kolkata")
+  currency                String   @default("INR")
+  supportedLanguages      String[] @default(["en", "hi"])
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  network                 HospitalNetwork? @relation(fields: [networkId], references: [id])
+  departments             Department[]
+  floors                  Floor[]
+  rooms                   Room[]
+  beds                    Bed[]
+  wards                   Ward[]
+  staff                   Staff[]
+  patients                Patient[]
+  patientVisits           PatientVisit[]
+  examinationTemplates    ExaminationTemplate[]
+
+  @@map("hospitals")
+}
+
+// Department Categories and Hierarchy
+model DepartmentCategory {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryName            String
+  categoryCode            String?  @unique
+  description             String?
+  icon                    String?
+  colorCode               String?
+  parentCategoryId        String?  @db.ObjectId
+  hierarchyLevel          Int      @default(1)
+  specializationType      String?  // medical, surgical, diagnostic, administrative
+
+  // Relations
+  parentCategory          DepartmentCategory? @relation("CategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childCategories         DepartmentCategory[] @relation("CategoryHierarchy")
+  departments             Department[]
+
+  @@map("department_categories")
+}
+
+model Department {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  categoryId              String?  @db.ObjectId
+  floorId                 String?  @db.ObjectId
+  parentDepartmentId      String?  @db.ObjectId
+  name                    String
+  code                    String?
+  departmentType          String?
+  specializationDetails   Json?
+  servicesOffered         String[]
+  equipmentList           Json?
+  staffRequirements       Json?
+  operationalHours        Json?
+  emergencyAvailability   Boolean  @default(false)
+  telemedicineEnabled     Boolean  @default(false)
+  consultationFeeRange    Json?
+  appointmentSchedulingRules Json?
+  qualityMetrics          Json?
+  performanceIndicators   Json?
+  budgetAllocation        Float?
+  revenueTargets          Json?
+  isActive                Boolean  @default(true)
+  hierarchyPath           String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  category                DepartmentCategory? @relation(fields: [categoryId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  parentDepartment        Department? @relation("DepartmentHierarchy", fields: [parentDepartmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childDepartments        Department[] @relation("DepartmentHierarchy")
+  rooms                   Room[]
+  beds                    Bed[]
+  wards                   Ward[]
+  staff                   Staff[]
+  doctors                 Doctor[]
+  nurses                  Nurse[]
+  examinationTemplates    ExaminationTemplate[]
+
+  @@map("departments")
+}
+
+// Floor and Infrastructure Management
+model Floor {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  floorNumber             Int
+  floorName               String?
+  floorType               String?
+  totalArea               Float?
+  usableArea              Float?
+  accessible              Boolean  @default(true)
+  emergencyExits          Int?
+  fireSafetyRating        String?
+  hvacZones               Json?
+  powerBackupAvailable    Boolean  @default(true)
+  networkInfrastructure   Json?
+  securityLevel           String?
+  accessControlPoints     Json?
+  description             String?
+  layoutMapUrl            String?
+  evacuationPlanUrl       String?
+  maintenanceSchedule     Json?
+  createdAt               DateTime @default(now())
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  departments             Department[]
+  rooms                   Room[]
+  wards                   Ward[]
+
+  @@map("floors")
+}
+
+// Room Types and Categories
+model RoomType {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  typeName                String
+  typeCode                String?  @unique
+  category                String?
+  defaultCapacity         Int?
+  equipmentRequirements   Json?
+  spaceRequirements       Json?
+  specialFeatures         Json?
+  infectionControlLevel   String?
+  airChangesPerHour       Int?
+  pressureRequirements    String?  // positive, negative, neutral
+  temperatureRange        Json?
+  humidityRange           Json?
+  noiseLevelLimits        Json?
+  lightingRequirements    Json?
+  medicalGasRequirements  Json?
+  powerRequirements       Json?
+  networkRequirements     Json?
+  accessibilityFeatures   Json?
+  costPerHour             Float?
+  costPerDay              Float?
+
+  // Relations
+  rooms                   Room[]
+
+  @@map("room_types")
+}
+
+// Comprehensive Room Management
+model Room {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  floorId                 String?  @db.ObjectId
+  departmentId            String?  @db.ObjectId
+  roomTypeId              String?  @db.ObjectId
+  roomNumber              String
+  roomName                String?
+  capacity                Int?
+  area                    Float?
+  amenities               Json?
+  equipmentInstalled      Json?
+  maintenanceSchedule     Json?
+  accessibilityFeatures   Json?
+  emergencyEquipment      Json?
+  environmentalControls   Json?
+  safetyFeatures          Json?
+  technologyFeatures      Json?
+  status                  String   @default("available")
+  occupancyStatus         String   @default("vacant")
+  cleaningStatus          String   @default("clean")
+  maintenanceStatus       String   @default("operational")
+  dailyRate               Float?
+  hourlyRate              Float?
+  weekendRate             Float?
+  holidayRate             Float?
+  isIsolationCapable      Boolean  @default(false)
+  quarantineCapable       Boolean  @default(false)
+  ventilationType         String?
+  lastCleaned             DateTime?
+  lastSanitized           DateTime?
+  nextMaintenance         DateTime?
+  utilizationMetrics      Json?
+  energyConsumption       Json?
+  bookingRestrictions     Json?
+  specialInstructions     String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  roomType                RoomType? @relation(fields: [roomTypeId], references: [id])
+  beds                    Bed[]
+
+  @@map("rooms")
+}
+
+// Bed Types and Management
+model BedType {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  typeName                String
+  typeCode                String?  @unique
+  category                String?
+  medicalGrade            String?
+  features                Json?
+  equipmentIncluded       Json?
+  maintenanceRequirements Json?
+  dailyCharge             Float?
+  hourlyCharge            Float?
+  setupTimeMinutes        Int      @default(30)
+  cleaningTimeMinutes     Int      @default(15)
+  specifications          Json?
+  manufacturerDetails     Json?
+  warrantyInformation     Json?
+  complianceCertifications Json?
+
+  // Relations
+  beds                    Bed[]
+
+  @@map("bed_types")
+}
+
+model Bed {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  roomId                  String?  @db.ObjectId
+  departmentId            String?  @db.ObjectId
+  bedTypeId               String?  @db.ObjectId
+  bedNumber               String
+  bedName                 String?
+  positionInRoom          Int?
+  status                  String   @default("available")
+  patientId               String?  @db.ObjectId
+  admissionDate           DateTime?
+  expectedDischargeDate   DateTime?
+  actualDischargeDate     DateTime?
+  specialRequirements     Json?
+  medicalEquipment        Json?
+  monitoringEquipment     Json?
+  lifeSupportEquipment    Json?
+  isolationLevel          String?
+  infectionControlMeasures Json?
+  ventilationSupport      Boolean  @default(false)
+  monitoringLevel         String?
+  nursingRatio            String?
+  dailyRate               Float?
+  lastCleaned             DateTime?
+  lastSanitized           DateTime?
+  lastInspection          DateTime?
+  maintenanceHistory      Json?
+  utilizationHistory      Json?
+  allocationPriority      Int      @default(1)
+  bookingRestrictions     Json?
+  transferCapabilities    Json?
+  emergencyAccess         Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  room                    Room? @relation(fields: [roomId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  bedType                 BedType? @relation(fields: [bedTypeId], references: [id])
+  patient                 Patient? @relation(fields: [patientId], references: [id])
+
+  @@map("beds")
+}
+
+// Ward Management
+model Ward {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  departmentId            String?  @db.ObjectId
+  floorId                 String?  @db.ObjectId
+  wardName                String
+  wardCode                String?
+  wardType                String?
+  totalBeds               Int?
+  availableBeds           Int?
+  occupiedBeds            Int?
+  reservedBeds            Int?
+  maintenanceBeds         Int?
+  nursingStationCount     Int?
+  headNurseId             String?  @db.ObjectId
+  doctorInChargeId        String?  @db.ObjectId
+  visitingHours           Json?
+  visitorRestrictions     Json?
+  infectionControlLevel   String?
+  isolationProtocols      Json?
+  emergencyProtocols      Json?
+  specializedEquipment    Json?
+  staffingRequirements    Json?
+  qualityMetrics          Json?
+  patientMixRequirements  Json?
+  admissionCriteria       Json?
+  dischargeCriteria       Json?
+  transferProtocols       Json?
+  documentationRequirements Json?
+  regulatoryCompliance    Json?
+  performanceIndicators   Json?
+  budgetAllocation        Float?
+  revenueTargets          Json?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  floor                   Floor? @relation(fields: [floorId], references: [id])
+  headNurse               Staff? @relation("WardHeadNurse", fields: [headNurseId], references: [id])
+  doctorInCharge          Doctor? @relation("WardDoctorInCharge", fields: [doctorInChargeId], references: [id])
+
+  @@map("wards")
+}
+
+// ============================================================================= 
+// ADVANCED USER MANAGEMENT & SECURITY 
+// ============================================================================= 
+
+// Role Categories and Hierarchy
+model RoleCategory {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryName            String
+  categoryDescription     String?
+  hierarchyLevel          Int?
+  parentCategoryId        String?  @db.ObjectId
+  reportingStructure      Json?
+  escalationMatrix        Json?
+  authorityLevels         Json?
+  responsibilityMatrix    Json?
+
+  // Relations
+  parentCategory          RoleCategory? @relation("RoleCategoryHierarchy", fields: [parentCategoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childCategories         RoleCategory[] @relation("RoleCategoryHierarchy")
+  roles                   Role[]
+
+  @@map("role_categories")
+}
+
+// Comprehensive Role Management
+model Role {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  categoryId              String?  @db.ObjectId
+  roleName                String
+  roleCode                String?  @unique
+  roleType                String?
+  roleDescription         String?
+  permissions             Json?
+  hierarchyLevel          Int?
+  reportingStructure      Json?
+  responsibilities        String[]
+  requiredQualifications  Json?
+  certificationRequirements Json?
+  experienceRequirements  Json?
+  salaryRange             Json?
+  performanceMetrics      Json?
+  trainingRequirements    Json?
+  continuingEducation     Json?
+  legalRequirements       Json?
+  backgroundCheckLevel    String?
+  securityClearanceRequired String?
+  isPatientFacing         Boolean  @default(false)
+  isClinicalRole          Boolean  @default(false)
+  isAdministrativeRole    Boolean  @default(false)
+  shiftPatterns           Json?
+  onCallRequirements      Json?
+  delegationAuthority     Json?
+  approvalLimits          Json?
+  systemAccessLevels      Json?
+  dataAccessRestrictions  Json?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+
+  // Relations
+  category                RoleCategory? @relation(fields: [categoryId], references: [id])
+  staff                   Staff[]
+  rolePermissions         RolePermission[]
+
+  @@map("roles")
+}
+
+// Enhanced Staff Management
+model Staff {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  employeeId              String?  @unique
+  
+  // Personal Information
+  personalDetails         Json?    // name, DOB, gender, etc.
+  contactDetails          Json?    // phone, email, address
+  emergencyContacts       Json?
+  identificationDocuments Json?    // Aadhaar, PAN, etc.
+  
+  // Employment Details
+  employmentDetails       Json?
+  roleId                  String?  @db.ObjectId
+  departmentId            String?  @db.ObjectId
+  reportingManagerId      String?  @db.ObjectId
+  employmentType          String?  // permanent, contract, consultant, temporary
+  employmentStatus        String   @default("active")
+  joiningDate             DateTime?
+  probationPeriodMonths   Int?
+  confirmationDate        DateTime?
+  noticePeriodDays        Int?
+  terminationDate         DateTime?
+  terminationReason       String?
+  
+  // Professional Information
+  specializations         Json?
+  qualifications          Json?
+  certifications          Json?
+  licenses                Json?
+  registrationNumbers     Json?    // Medical Council, Nursing Council, etc.
+  languagesSpoken         String[]
+  skills                  Json?
+  competencies            Json?
+  trainingRecords         Json?
+  
+  // Performance and Ratings
+  performanceRatings      Json?
+  kpiScores               Json?
+  patientSatisfactionScores Json?
+  peerFeedbackScores      Json?
+  
+  // Compensation
+  salaryDetails           Json?
+  benefits                Json?
+  incentiveStructure      Json?
+  
+  // Security and Access
+  biometricData           Json?
+  securityClearanceLevel  String?
+  accessCardDetails       Json?
+  systemAccessLevels      Json?
+  dataAccessPermissions   Json?
+  
+  // Digital Presence
+  photoUrl                String?
+  digitalSignature        String?
+  emailSignature          String?
+  socialProfiles          Json?
+  
+  // Medical Information (for safety)
+  medicalInfo             Json?
+  vaccinationRecords      Json?
+  healthScreeningRecords  Json?
+  
+  // Legal and Compliance
+  backgroundVerification  Json?
+  policeClearance         Json?
+  drugTestRecords         Json?
+  complianceTraining      Json?
+  
+  // Preferences and Settings
+  workPreferences         Json?
+  notificationPreferences Json?
+  systemPreferences       Json?
+  
+  // Metadata
+  createdById             String?  @db.ObjectId
+  lastUpdatedById         String?  @db.ObjectId
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  role                    Role? @relation(fields: [roleId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  reportingManager        Staff? @relation("StaffHierarchy", fields: [reportingManagerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  subordinates            Staff[] @relation("StaffHierarchy")
+  createdBy               Staff? @relation("StaffCreatedBy", fields: [createdById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  lastUpdatedBy           Staff? @relation("StaffUpdatedBy", fields: [lastUpdatedById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  
+  // Extended Relations
+  doctor                  Doctor?
+  nurse                   Nurse?
+  userCredentials         UserCredential[]
+  mfaConfigurations       MfaConfiguration[]
+  userSessions            UserSession[]
+  wardsAsHeadNurse        Ward[] @relation("WardHeadNurse")
+  createdStaff            Staff[] @relation("StaffCreatedBy")
+  updatedStaff            Staff[] @relation("StaffUpdatedBy")
+  createdExaminationTemplates ExaminationTemplate[] @relation("ExaminationTemplateCreatedBy")
+  approvedExaminationTemplates ExaminationTemplate[] @relation("ExaminationTemplateApprovedBy")
+  examinations            Examination[]
+  diagnoses               Diagnosis[]
+  patientVisitsVerified   PatientVisit[]
+  oauthClientsCreated     OauthClient[]
+  oauthAccessTokens       OauthAccessToken[]
+  rolePermissionsGranted  RolePermission[]
+
+  @@map("staff")
+}
+
+// Doctor-specific Information
+model Doctor {
+  id                      String   @id @map("_id") @db.ObjectId
+  doctorType              String?  // general_practitioner, specialist, super_specialist, consultant, resident, intern
+  medicalRegistrationNumber String? @unique
+  medicalCouncil          String?
+  registrationDate        DateTime?
+  registrationExpiry      DateTime?
+  medicalDegree           String?
+  specialization          String?
+  subSpecialization       String?
+  fellowshipDetails       Json?
+  boardCertifications     Json?
+  
+  // Practice Information
+  consultationFee         Float?
+  followUpFee             Float?
+  surgeryFee              Float?
+  procedureFees           Json?
+  
+  // Availability and Scheduling
+  availableDays           Int[]
+  consultationDuration    Int      @default(15)
+  maxPatientsPerDay       Int?
+  maxPatientsPerSession   Int?
+  appointmentSlots        Json?
+  breakTimes              Json?
+  
+  // Preferences
+  autoAssignmentPriority  Int      @default(1)
+  telemedicineEnabled     Boolean  @default(false)
+  homeVisitAvailable      Boolean  @default(false)
+  emergencyOnCall         Boolean  @default(false)
+  
+  // Performance Metrics
+  patientSatisfactionRating Float?
+  averageConsultationTime Int?
+  appointmentAdherenceRate Float?
+  patientOutcomeScores    Json?
+  complicationRates       Json?
+  readmissionRates        Json?
+  
+  // Professional Development
+  researchInterests       String[]
+  publications            Json?
+  conferencesAttended     Json?
+  teachingResponsibilities Json?
+  mentorshipRoles         Json?
+  
+  // Quality and Safety
+  malpracticeHistory      Json?
+  disciplinaryActions     Json?
+  qualityImprovementParticipation Json?
+  safetyTrainingCompletion Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  staff                   Staff @relation(fields: [id], references: [id])
+  department              Department? @relation(fields: [id], references: [id])
+  wardsInCharge           Ward[] @relation("WardDoctorInCharge")
+  patientVisitsAttending  PatientVisit[] @relation("AttendingPhysician")
+  patientVisitsReferring  PatientVisit[] @relation("ReferringPhysician")
+  examinations            Examination[] @relation("DoctorExaminations")
+  diagnoses               Diagnosis[] @relation("DoctorDiagnoses")
+  examinationsReviewed    Examination[] @relation("ExaminationReviewedBy")
+  examinationsApproved    Examination[] @relation("ExaminationApprovedBy")
+
+  @@map("doctors")
+}
+
+// Nursing Staff Information
+model Nurse {
+  id                      String   @id @map("_id") @db.ObjectId
+  nursingRegistrationNumber String? @unique
+  nursingCouncil          String?
+  nursingDegree           String?
+  specialization          String?
+  certificationLevel      String?  // GNM, BSc, MSc, etc.
+  yearsOfExperience       Int?
+  
+  // Specializations and Skills
+  clinicalSpecializations String[]
+  technicalSkills         String[]
+  equipmentCertifications String[]
+  
+  // Work Preferences
+  preferredShifts         String[]
+  wardPreferences         String[]
+  patientTypePreferences  String[]
+  
+  // Performance Metrics
+  patientCareQualityScore Float?
+  medicationAdministrationAccuracy Float?
+  documentationQualityScore Float?
+  
+  createdAt               DateTime @default(now())
+
+  // Relations
+  staff                   Staff @relation(fields: [id], references: [id])
+  department              Department? @relation(fields: [id], references: [id])
+
+  @@map("nurses")
+}
+
+// Enhanced User Authentication and Security
+model UserCredential {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                  String   @db.ObjectId
+  credentialType          String?
+  credentialDataHash      String?
+  salt                    String?
+  algorithm               String?
+  keyDerivationParams     Json?
+  isPrimary               Boolean  @default(false)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  lastUsed                DateTime?
+  expiresAt               DateTime?
+  failedAttempts          Int      @default(0)
+  lockoutUntil            DateTime?
+  passwordHistory         Json?
+  twoFactorEnabled        Boolean  @default(false)
+  backupCodes             String[]
+  deviceRegistrations     Json?
+
+  // Relations
+  user                    Staff @relation(fields: [userId], references: [id])
+
+  @@map("user_credentials")
+}
+
+// Multi-Factor Authentication
+model MfaConfiguration {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                  String   @db.ObjectId
+  methodType              String?
+  methodDetails           Json?
+  secretKeyEncrypted      String?
+  backupCodes             String[]
+  recoveryCodes           String[]
+  isPrimary               Boolean  @default(false)
+  isEnabled               Boolean  @default(true)
+  verificationAttempts    Int      @default(0)
+  lastVerified            DateTime?
+  setupCompletedAt        DateTime?
+  lastUsed                DateTime?
+  deviceTrustSettings     Json?
+  locationRestrictions    Json?
+
+  // Relations
+  user                    Staff @relation(fields: [userId], references: [id])
+
+  @@map("mfa_configurations")
+}
+
+// Session Management
+model UserSession {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                  String   @db.ObjectId
+  sessionTokenHash        String?
+  refreshTokenHash        String?
+  ipAddress               String?
+  userAgent               String?
+  deviceInfo              Json?
+  locationInfo            Json?
+  loginTimestamp          DateTime @default(now())
+  lastActivity            DateTime @default(now())
+  expiresAt               DateTime?
+  isActive                Boolean  @default(true)
+  logoutTimestamp         DateTime?
+  logoutReason            String?
+  sessionType             String?  // web, mobile, api, kiosk
+  securityLevel           String?
+  privilegedOperations    Json?
+  concurrentSessions      Int      @default(1)
+  deviceTrusted           Boolean  @default(false)
+
+  // Relations
+  user                    Staff @relation(fields: [userId], references: [id])
+
+  @@map("user_sessions")
+}
+
+// Permissions and Access Control
+model Permission {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  permissionName          String
+  permissionCode          String?  @unique
+  module                  String?
+  action                  String?
+  resource                String?
+  description             String?
+  permissionType          String?  // system, functional, data, administrative
+  sensitivityLevel        String?  // public, internal, confidential, restricted
+  complianceRequirements  String[]
+  auditRequired           Boolean  @default(false)
+  delegationAllowed       Boolean  @default(false)
+  temporaryGrantAllowed   Boolean  @default(false)
+  approvalRequired        Boolean  @default(false)
+  conditions              Json?
+  isSystem                Boolean  @default(false)
+  createdAt               DateTime @default(now())
+
+  // Relations
+  rolePermissions         RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  roleId                  String   @db.ObjectId
+  permissionId            String   @db.ObjectId
+  granted                 Boolean  @default(true)
+  conditions              Json?
+  timeRestrictions        Json?
+  locationRestrictions    Json?
+  dataRestrictions        Json?
+  approvalWorkflow        Json?
+  grantedBy               String?  @db.ObjectId
+  grantedAt               DateTime @default(now())
+  expiresAt               DateTime?
+  lastReviewed            DateTime?
+  reviewFrequency         Int?     // days
+  isInherited             Boolean  @default(false)
+  overrideReason          String?
+
+  // Relations
+  role                    Role @relation(fields: [roleId], references: [id])
+  permission              Permission @relation(fields: [permissionId], references: [id])
+  grantedByStaff          Staff? @relation(fields: [grantedBy], references: [id])
+
+  @@map("role_permissions")
+}
+
+// OAuth 2.0 Integration
+model OauthClient {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientSecretHash        String?
+  clientName              String?
+  clientType              String?
+  redirectUris            String[]
+  allowedScopes           String[]
+  allowedGrantTypes       String[]
+  accessTokenLifetime     Int      @default(3600)
+  refreshTokenLifetime    Int      @default(2592000)
+  pkceRequired            Boolean  @default(true)
+  confidential            Boolean  @default(true)
+  autoApprove             Boolean  @default(false)
+  additionalInformation   Json?
+  createdBy               String?  @db.ObjectId
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+
+  // Relations
+  createdByStaff          Staff? @relation(fields: [createdBy], references: [id])
+  accessTokens            OauthAccessToken[]
+
+  @@map("oauth_clients")
+}
+
+model OauthAccessToken {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  clientId                String   @db.ObjectId
+  userId                  String?  @db.ObjectId
+  accessTokenHash         String?
+  refreshTokenHash        String?
+  scopes                  String[]
+  tokenType               String   @default("Bearer")
+  expiresAt               DateTime?
+  createdAt               DateTime @default(now())
+  revokedAt               DateTime?
+  revocationReason        String?
+  additionalInformation   Json?
+
+  // Relations
+  client                  OauthClient @relation(fields: [clientId], references: [id])
+  user                    Staff? @relation(fields: [userId], references: [id])
+
+  @@map("oauth_access_tokens")
+}
+
+// ============================================================================= 
+// PATIENT MANAGEMENT & CLINICAL DOCUMENTATION 
+// ============================================================================= 
+
+// Enhanced Patient Management
+model Patient {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  patientNumber           String?  @unique
+  mrn                     String?  @unique
+  abhaId                  String?
+  qrCode                  String?  
+  barcode                 String?  
+  
+  // Personal Information
+  personalDetails         Json?    // name, DOB, gender, etc.
+  contactDetails          Json?    // phone, email, address
+  emergencyContacts       Json?
+  demographics            Json?
+  identificationDocuments Json?
+  
+  // Medical Information
+  bloodGroup              String?
+  rhFactor                String?
+  allergies               Json?
+  chronicConditions       Json?
+  familyHistory           Json?
+  socialHistory           Json?
+  medicalHistory          Json?
+  surgicalHistory         Json?
+  medicationHistory       Json?
+  immunizationRecords     Json?
+  
+  // Insurance and Financial
+  insuranceDetails        Json?
+  financialInformation    Json?
+  paymentPreferences      Json?
+  creditLimit             Float?
+  outstandingAmount       Float?
+  
+  // Preferences and Settings
+  preferences             Json?
+  communicationPreferences Json?
+  culturalConsiderations  Json?
+  dietaryRestrictions     Json?
+  religiousPreferences    Json?
+  languagePreferences     String[]
+  
+  // Risk Assessment
+  riskFactors             Json?
+  fallRiskScore           Int?
+  infectionRiskLevel      String?
+  medicationRiskFactors   Json?
+  
+  // Digital Health
+  biometricData           Json?
+  wearableDeviceData      Json?
+  digitalHealthRecords    Json?
+  telemedicinePreferences Json?
+  
+  // Privacy and Consent
+  consentStatus           Json?
+  privacySettings         Json?
+  dataSharingPreferences  Json?
+  
+  // Status and Classification
+  patientType             String?  // regular, vip, staff, emergency, charity
+  patientStatus           String   @default("active")
+  mobilityStatus          String?
+  mentalStatus            String?
+  communicationBarriers   Json?
+  
+  // Quality and Safety
+  patientSafetyAlerts     Json?
+  clinicalAlerts          Json?
+  drugInteractionAlerts   Json?
+  
+  // Analytics and Tracking
+  visitFrequency          Json?
+  loyaltyProgramStatus    Json?
+  satisfactionScores      Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  beds                    Bed[]
+  patientVisits           PatientVisit[]
+
+  @@map("patients")
+}
+
+// Patient Visits and Episodes
+model PatientVisit {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  patientId               String   @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  visitNumber             String?  @unique
+  parentVisitId           String?  @db.ObjectId
+  
+  // Visit Classification
+  visitType               String?  // OPD, IPD, Emergency, Day_Care, Home_Visit, Telemedicine, Follow_up
+  visitCategory           String?  // consultation, procedure, surgery, diagnostic, therapy
+  episodeType             String?  // new, follow_up, continuation, readmission
+  
+  // Visit Details
+  registrationTimestamp   DateTime @default(now())
+  visitDate               DateTime?
+  chiefComplaint          String?
+  presentingSymptoms      Json?
+  historyOfPresentIllness String?
+  
+  // Status and Priority
+  status                  String   @default("registered")
+  priorityLevel           Int      @default(1)
+  urgencyLevel            String?  // routine, urgent, emergent, critical
+  triageCategory          String?
+  
+  // OPD to IPD Conversion
+  conversionDetails       Json?
+  opdDataImported         Boolean  @default(false)
+  opdImportTimestamp      DateTime?
+  opdDataCorrections      Json?
+  correctionApprovals     Json?
+  dataVerificationStatus  String   @default("pending")
+  verifiedBy              String?  @db.ObjectId
+  verificationTimestamp   DateTime?
+  
+  // IPD Specific Information
+  admissionDate           DateTime?
+  admissionSource         String?
+  admissionType           String?
+  attendingPhysicianId    String?  @db.ObjectId
+  admittingDiagnosis      String?
+  dischargeDate           DateTime?
+  dischargeType           String?
+  dischargeDisposition    String?
+  lengthOfStay            Int?
+  
+  // Clinical Information
+  vitalSignsOnArrival     Json?
+  initialAssessment       Json?
+  treatmentPlan           Json?
+  careTeam                Json?
+  
+  // Administrative Information
+  referringPhysicianId    String?  @db.ObjectId
+  insuranceAuthorization  Json?
+  advanceDirectives       Json?
+  
+  // Quality and Safety
+  patientSafetyEvents     Json?
+  adverseEvents           Json?
+  medicationErrors        Json?
+  
+  // Financial Information
+  estimatedCost           Float?
+  insuranceCoverage       Float?
+  patientLiability        Float?
+  
+  // Outcomes and Follow-up
+  visitOutcome            String?
+  followUpInstructions    Json?
+  nextAppointmentDate     DateTime?
+  patientSatisfactionScore Float?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  patient                 Patient @relation(fields: [patientId], references: [id])
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  parentVisit             PatientVisit? @relation("VisitHierarchy", fields: [parentVisitId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  childVisits             PatientVisit[] @relation("VisitHierarchy")
+  verifiedByStaff         Staff? @relation(fields: [verifiedBy], references: [id])
+  attendingPhysician      Doctor? @relation("AttendingPhysician", fields: [attendingPhysicianId], references: [id])
+  referringPhysician      Doctor? @relation("ReferringPhysician", fields: [referringPhysicianId], references: [id])
+  examinations            Examination[]
+  diagnoses               Diagnosis[]
+
+  @@map("patient_visits")
+}
+
+// ICD-10 and ICD-11 Integration
+model Icd10Code {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  code                    String   @unique
+  description             String
+  category                String?
+  subcategory             String?
+  chapter                 String?
+  block                   String?
+  version                 String?
+  billable                Boolean  @default(true)
+  genderSpecific          String?
+  ageRestrictions         Json?
+  synonyms                String[]
+  includes                String[]
+  excludes                String[]
+  notes                   String?
+  severityLevels          Json?
+  clinicalGuidelines      Json?
+  mortalityIndicator      Boolean  @default(false)
+  morbidityIndicator      Boolean  @default(true)
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+
+  // Relations
+  diseases                Disease[]
+
+  @@map("icd10_codes")
+}
+
+model Icd11Code {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  foundationId            String   @unique
+  entityId                String?
+  code                    String?
+  title                   Json?
+  definition              Json?
+  parentId                String?  @db.ObjectId
+  chapter                 String?
+  blockTitle              String?
+  codingNote              Json?
+  inclusionTerms          Json?
+  exclusionTerms          Json?
+  indexTerms              Json?
+  synonyms                Json?
+  narrowerTerms           String[]
+  broaderTerms            String[]
+  fullySpecifiedName      Json?
+  classificationProperties Json?
+  mortalityCoding         Boolean  @default(false)
+  morbidityCoding         Boolean  @default(false)
+  primaryCareLowSettings  Boolean  @default(false)
+  specialtyAdaptations    Json?
+  functioningProperties   Json?
+  anatomicalProperties    Json?
+  severityProperties      Json?
+  temporalProperties      Json?
+  releaseVersion          String?
+  linearization           String[]
+  browserUrl              String?
+  apiUrl                  String?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  parent                  Icd11Code? @relation("Icd11Hierarchy", fields: [parentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  children                Icd11Code[] @relation("Icd11Hierarchy")
+  diseases                Disease[]
+
+  @@map("icd11_codes")
+}
+
+// Disease and Condition Management
+model Disease {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  icd10CodeId             String?  @db.ObjectId
+  icd11CodeId             String?  @db.ObjectId
+  diseaseName             Json?
+  commonNames             Json?
+  specialty               String?
+  subspecialty            String?
+  diseaseCategory         String?
+  
+  // Clinical Information
+  pathophysiology         Json?
+  etiology                Json?
+  riskFactors             Json?
+  symptoms                Json?
+  signs                   Json?
+  diagnosticCriteria      Json?
+  differentialDiagnosis   Json?
+  complications           Json?
+  prognosis               Json?
+  
+  // Treatment and Management
+  treatmentProtocols      Json?
+  medicationProtocols     Json?
+  surgicalOptions         Json?
+  rehabilitationProtocols Json?
+  lifestyleModifications  Json?
+  preventionMeasures      Json?
+  followUpSchedule        Json?
+  
+  // Research and Evidence
+  researchNotes           Json?
+  clinicalTrials          Json?
+  evidenceBase            Json?
+  guidelinesReferences    Json?
+  
+  // Epidemiology
+  prevalenceData          Json?
+  incidenceData           Json?
+  demographicPatterns     Json?
+  geographicalDistribution Json?
+  seasonalPatterns        Json?
+  
+  // Classification
+  severityClassification  Json?
+  functionalImpact        Json?
+  environmentalFactors    Json?
+  geneticFactors          Json?
+  
+  // Regulatory and Compliance
+  isNotifiable            Boolean  @default(false)
+  notificationRequirements Json?
+  reportingRequirements   Json?
+  
+  // Characteristics
+  isChronic               Boolean  @default(false)
+  isHereditary            Boolean  @default(false)
+  isContagious            Boolean  @default(false)
+  isRareDisease           Boolean  @default(false)
+  
+  // Multi-language Support
+  supportedLanguages      String[] @default(["en", "hi", "mr"])
+  clinicalGuidelinesUrl   Json?
+  patientEducationMaterials Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  icd10Code               Icd10Code? @relation(fields: [icd10CodeId], references: [id])
+  icd11Code               Icd11Code? @relation(fields: [icd11CodeId], references: [id])
+  diagnoses               Diagnosis[]
+
+  @@map("diseases")
+}
+
+// Examination Templates and Forms
+model ExaminationTemplate {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  hospitalId              String   @db.ObjectId
+  departmentId            String?  @db.ObjectId
+  templateName            String
+  templateType            String?
+  specialty               String?
+  examinationType         String?
+  
+  // Template Structure
+  templateStructure       Json?
+  formFields              Json?
+  validationRules         Json?
+  calculationFormulas     Json?
+  defaultValues           Json?
+  conditionalLogic        Json?
+  
+  // Clinical Content
+  mandatoryFields         String[]
+  optionalFields          String[]
+  calculatedFields        String[]
+  scoringSystem           Json?
+  normalRanges            Json?
+  referenceValues         Json?
+  interpretationGuidelines String?
+  clinicalDecisionSupport Json?
+  
+  // Workflow Integration
+  workflowIntegration     Json?
+  automationRules         Json?
+  alertConditions         Json?
+  followUpTriggers        Json?
+  
+  // Quality and Compliance
+  qualityMetrics          Json?
+  complianceRequirements  Json?
+  documentationStandards  Json?
+  auditRequirements       Json?
+  
+  // Multi-language Support
+  supportedLanguages      String[] @default(["en", "hi", "mr"])
+  
+  version                 String?
+  isActive                Boolean  @default(true)
+  createdBy               String?  @db.ObjectId
+  approvedBy              String?  @db.ObjectId
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  hospital                Hospital @relation(fields: [hospitalId], references: [id])
+  department              Department? @relation(fields: [departmentId], references: [id])
+  createdByStaff          Staff? @relation("ExaminationTemplateCreatedBy", fields: [createdBy], references: [id])
+  approvedByStaff         Staff? @relation("ExaminationTemplateApprovedBy", fields: [approvedBy], references: [id])
+  examinations            Examination[]
+
+  @@map("examination_templates")
+}
+
+// Clinical Examinations
+model Examination {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  visitId                 String   @db.ObjectId
+  templateId              String?  @db.ObjectId
+  doctorId                String   @db.ObjectId
+  examinationType         String?
+  examinationDate         DateTime @default(now())
+  
+  // Clinical Findings
+  vitalSigns              Json?
+  physicalExamination     Json?
+  systemExamination       Json?
+  neurologicalExamination Json?
+  mentalStatusExamination Json?
+  functionalAssessment    Json?
+  
+  // Measurements and Observations
+  anthropometricMeasurements Json?
+  laboratoryValues        Json?
+  imagingFindings         Json?
+  diagnosticTestResults   Json?
+  
+  // Documentation
+  findings                Json?
+  clinicalImpressions     String?
+  assessment              Json?
+  plan                    Json?
+  
+  // Media and Attachments
+  images                  Json?
+  videos                  Json?
+  audioRecordings         Json?
+  documents               Json?
+  
+  // Diagnostic Information
+  preliminaryDiagnosis    String[]
+  differentialDiagnosis   String[]
+  finalDiagnosis          String[]
+  diagnosticConfidence    Json?
+  
+  // Treatment Planning
+  recommendations         Json?
+  treatmentPlan           Json?
+  medicationRecommendations Json?
+  followUpRequirements    Json?
+  
+  // Quality and Safety
+  riskAssessment          Json?
+  safetyAlerts            Json?
+  drugInteractions        Json?
+  contraindications       Json?
+  
+  // Review and Approval
+  followUpRequired        Boolean  @default(false)
+  followUpDate            DateTime?
+  qualityScore            Float?
+  status                  String   @default("in_progress")
+  reviewedBy              String?  @db.ObjectId
+  reviewDate              DateTime?
+  approvedBy              String?  @db.ObjectId
+  approvalDate            DateTime?
+  
+  // Performance Metrics
+  examinationDuration     Int?     // minutes
+  completenessScore       Float?
+  accuracyIndicators      Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  visit                   PatientVisit @relation(fields: [visitId], references: [id])
+  template                ExaminationTemplate? @relation(fields: [templateId], references: [id])
+  doctor                  Staff @relation(fields: [doctorId], references: [id])
+  doctorExamination       Doctor? @relation("DoctorExaminations", fields: [doctorId], references: [id])
+  reviewedByDoctor        Doctor? @relation("ExaminationReviewedBy", fields: [reviewedBy], references: [id])
+  approvedByDoctor        Doctor? @relation("ExaminationApprovedBy", fields: [approvedBy], references: [id])
+  diagnoses               Diagnosis[]
+
+  @@map("examinations")
+}
+
+// Diagnosis Management
+model Diagnosis {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  visitId                 String   @db.ObjectId
+  examinationId           String?  @db.ObjectId
+  diseaseId               String?  @db.ObjectId
+  doctorId                String   @db.ObjectId
+  
+  // Diagnosis Information
+  diagnosisType           String?  // primary, secondary, complication, comorbidity
+  diagnosisDate           DateTime @default(now())
+  diagnosisMethod         String?  // clinical, laboratory, imaging, biopsy, etc.
+  confidenceLevel         Float?   // 0.0 to 1.0
+  
+  // Clinical Details
+  severity                String?
+  stage                   String?
+  grade                   String?
+  anatomicalLocation      Json?
+  affectedSystems         String[]
+  laterality              String?  // left, right, bilateral, unspecified
+  
+  // Temporal Information
+  onsetDate               DateTime?
+  duration                String?
+  progression             String?  // acute, chronic, progressive, stable
+  
+  // Evidence and Support
+  supportingEvidence      Json?
+  diagnosticCriteriaMet   Json?
+  laboratoryEvidence      Json?
+  imagingEvidence         Json?
+  pathologyEvidence       Json?
+  
+  // Treatment and Prognosis
+  treatmentResponse       String?
+  prognosis               String?
+  expectedOutcome         String?
+  functionalImpact        Json?
+  
+  // Administrative
+  isPrimary               Boolean  @default(false)
+  billable                Boolean  @default(true)
+  reportable              Boolean  @default(false)
+  workRelated             Boolean  @default(false)
+  injuryRelated           Boolean  @default(false)
+  
+  // Quality and Review
+  peerReviewed            Boolean  @default(false)
+  qualityAssured          Boolean  @default(false)
+  codingReviewed          Boolean  @default(false)
+  
+  notes                   String?
+  revisionHistory         Json?
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Relations
+  visit                   PatientVisit @relation(fields: [visitId], references: [id])
+  examination             Examination? @relation(fields: [examinationId], references: [id])
+  disease                 Disease? @relation(fields: [diseaseId], references: [id])
+  doctor                  Staff @relation(fields: [doctorId], references: [id])
+  doctorDiagnosis         Doctor? @relation("DoctorDiagnoses", fields: [doctorId], references: [id])
+
+  @@map("diagnoses")
+}
+
+// =============================================================================
+
+// SUPERADMIN SERVICE 
+// This service handles super admin operations, including creating a super admin user.
+// It ensures that the super admin user is unique and performs necessary validations.
+// ============================================================================= 
+// SUPER ADMIN MANAGEMENT (System-wide access)
+// ============================================================================= 
+
+model SuperAdmin {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName               String
+  lastName                String
+  email                   String   @unique
+  phone                   String?
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  // Authentication Relations
+  credentials             SuperAdminCredential[]
+  sessions                SuperAdminSession[]
+
+  @@map("super_admins")
+}
+
+// Super Admin specific authentication
+model SuperAdminCredential {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  superAdminId            String   @db.ObjectId
+  credentialType          String   @default("email")
+  credentialDataHash      String
+  isActive                Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  lastUsed                DateTime?
+  failedAttempts          Int      @default(0)
+  lockoutUntil            DateTime?
+
+  // Relations
+  superAdmin              SuperAdmin @relation(fields: [superAdminId], references: [id])
+
+  @@map("super_admin_credentials")
+}
+
+// Super Admin Sessions
+model SuperAdminSession {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  superAdminId            String   @db.ObjectId
+  sessionTokenHash        String
+  refreshTokenHash        String?
+  ipAddress               String?
+  userAgent               String?
+  loginTimestamp          DateTime @default(now())
+  lastActivity            DateTime @default(now())
+  expiresAt               DateTime
+  isActive                Boolean  @default(true)
+  logoutTimestamp         DateTime?
+
+  // Relations
+  superAdmin              SuperAdmin @relation(fields: [superAdminId], references: [id])
+
+  @@map("super_admin_sessions")
+}

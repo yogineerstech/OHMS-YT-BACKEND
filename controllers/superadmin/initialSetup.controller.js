@@ -14,7 +14,7 @@ const initialSetup = async (req, res) => {
       confirmPassword,
       phone 
     } = req.body;
-
+    console.log('Initial setup request:', req.body);
     // Validate required fields
     if (!firstName || !lastName || !email || !password) {
       return res.status(400).json({
