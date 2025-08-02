@@ -367,7 +367,6 @@ model Staff {
   accessLevel             String?
   systemAccess            Json?
   loginCredentials        Json?
-  role                    Json?
   roleId                  String?
   status                  String    @default("active") // active, inactive, on_leave, terminated
   isActive                Boolean   @default(true)
@@ -379,10 +378,10 @@ model Staff {
   updatedAt               DateTime  @updatedAt
 
   // Relations
-  hospital       Hospital       @relation(fields: [hospitalId], references: [id])
-  department     Department?    @relation(fields: [departmentId], references: [id])
-  roleAssignment Role?          @relation(fields: [roleId], references: [id])
-  patientVisits  PatientVisit[]
+  hospital      Hospital       @relation(fields: [hospitalId], references: [id])
+  department    Department?    @relation(fields: [departmentId], references: [id])
+  role          Role?          @relation(fields: [roleId], references: [id])
+  patientVisits PatientVisit[]
 
   // Enhanced Relations for new models
   doctor                 Doctor?

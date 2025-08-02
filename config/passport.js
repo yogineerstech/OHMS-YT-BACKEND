@@ -83,28 +83,64 @@ passport.use(new JwtStrategy({
   secretOrKey: process.env.JWT_SECRET || 'your-secret-key'
 }, async (payload, done) => {
   try {
-    const user = await prisma.staff.findUnique({
-      where: { id: payload.userId },
-      include: {
-        role: {
-          include: {
-            rolePermissions: {
-              include: {
-                permission: true
+    console.log('JWT Strategy - Payload received:', payload);
+    
+    let user = null;
+    
+    // Check if it's a SuperAdmin token
+    if (payload.userType === 'super_admin') {
+      user = await prisma.superAdmin.findUnique({
+        where: { id: payload.userId },
+        include: {
+          credentials: {
+            where: { isActive: true }
+          }
+        }
+      });
+      console.log('JWT Strategy - SuperAdmin found:', user ? 'Yes' : 'No');
+      
+      // Add userType to the user object for middleware
+      if (user) {
+        user.userType = 'super_admin';
+      }
+    } else {
+      // Handle Staff token
+      user = await prisma.staff.findUnique({
+        where: { id: payload.userId },
+        include: {
+          role: {
+            include: {
+              rolePermissions: {
+                include: {
+                  permission: true
+                }
               }
             }
-          }
-        },
-        hospital: true,
-        department: true
+          },
+          hospital: true,
+          department: true
+        }
+      });
+      console.log('JWT Strategy - Staff found:', user ? 'Yes' : 'No');
+      
+      // Add userType to the user object for middleware
+      if (user) {
+        user.userType = 'staff';
       }
-    });
+    }
+
+    if (user) {
+      console.log('JWT Strategy - User ID:', user.id);
+      console.log('JWT Strategy - User isActive:', user.isActive);
+      console.log('JWT Strategy - User type:', user.userType);
+    }
 
     if (user && user.isActive) {
       return done(null, user);
     }
     return done(null, false);
   } catch (error) {
+    console.error('JWT Strategy Error:', error);
     return done(error);
   }
 }));

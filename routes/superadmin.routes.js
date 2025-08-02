@@ -7,13 +7,24 @@ const { requireRole, requirePermission } = require('../middleware/role.middlewar
 
 // Middleware to ensure user is super admin (define before using)
 function requireSuperAdmin(req, res, next) {
-  if (!req.user || req.user.role?.roleCode !== 'SUPER_ADMIN') {
-    return res.status(403).json({
-      success: false,
-      message: 'Super admin access required'
-    });
+  console.log('requireSuperAdmin - req.user exists:', req.user ? 'Yes' : 'No');
+  if (req.user) {
+    console.log('requireSuperAdmin - userType:', req.user.userType);
+    console.log('requireSuperAdmin - email:', req.user.email);
+    console.log('requireSuperAdmin - role:', req.user.role);
   }
-  next();
+  
+  // Check if user is super admin (either by userType or by having email and no role)
+  if (req.user && (req.user.userType === 'super_admin' || (req.user.email && !req.user.role))) {
+    console.log('requireSuperAdmin - Access granted');
+    return next();
+  }
+
+  console.log('requireSuperAdmin - Access denied');
+  return res.status(403).json({
+    success: false,
+    message: 'Super admin access required'
+  });
 }
 
 // Public routes (no auth required)

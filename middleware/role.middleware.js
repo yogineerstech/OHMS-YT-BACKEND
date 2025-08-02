@@ -103,11 +103,20 @@ const scopeToUserHospital = (req, res, next) => {
 };
 
 const checkSuperAdminRole = (req, res, next) => {
+  console.log('checkSuperAdminRole - req.user:', req.user ? 'exists' : 'null');
+  if (req.user) {
+    console.log('checkSuperAdminRole - userType:', req.user.userType);
+    console.log('checkSuperAdminRole - email:', req.user.email);
+    console.log('checkSuperAdminRole - role:', req.user.role);
+  }
+  
   // Check if user is super admin (either userType or no role but has email)
   if (req.user && (req.user.userType === 'super_admin' || (req.user.email && !req.user.role))) {
+    console.log('checkSuperAdminRole - Access granted');
     return next();
   }
 
+  console.log('checkSuperAdminRole - Access denied');
   return res.status(403).json({
     success: false,
     message: 'Super admin access required'

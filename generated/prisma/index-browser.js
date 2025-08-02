@@ -378,7 +378,6 @@ exports.Prisma.StaffScalarFieldEnum = {
   accessLevel: 'accessLevel',
   systemAccess: 'systemAccess',
   loginCredentials: 'loginCredentials',
-  role: 'role',
   roleId: 'roleId',
   status: 'status',
   isActive: 'isActive',
