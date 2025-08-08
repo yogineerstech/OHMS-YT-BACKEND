@@ -36,8 +36,12 @@ class PatientController {
         consent: req.body.consent || {}
       };
 
+      // Process uploaded files in controller (where req object is available)
+      const { processUploadedFiles } = require('../middleware/upload.middleware');
+      const processedFiles = req.files ? processUploadedFiles(req) : {};
+
       // Create patient with full registration
-      const result = await patientService.createPatient(registrationData, req.files, hospitalId);
+      const result = await patientService.createPatient(registrationData, processedFiles, hospitalId);
 
       res.status(201).json({
         success: true,
@@ -47,6 +51,7 @@ class PatientController {
     } catch (error) {
       // Clean up uploaded files if registration fails
       if (req.files) {
+        const { processUploadedFiles, cleanupUploadedFiles } = require('../middleware/upload.middleware');
         const uploadedFiles = processUploadedFiles(req);
         cleanupUploadedFiles(uploadedFiles);
       }
@@ -87,8 +92,12 @@ class PatientController {
         consent: req.body.consent || {}
       };
 
+      // Process uploaded files in controller (where req object is available)
+      const { processUploadedFiles } = require('../middleware/upload.middleware');
+      const processedFiles = req.files ? processUploadedFiles(req) : {};
+
       // Create quick registration patient
-      const result = await patientService.createQuickPatient(registrationData, req.files, hospitalId);
+      const result = await patientService.createQuickPatient(registrationData, processedFiles, hospitalId);
 
       res.status(201).json({
         success: true,
@@ -98,6 +107,7 @@ class PatientController {
     } catch (error) {
       // Clean up uploaded files if registration fails
       if (req.files) {
+        const { processUploadedFiles, cleanupUploadedFiles } = require('../middleware/upload.middleware');
         const uploadedFiles = processUploadedFiles(req);
         cleanupUploadedFiles(uploadedFiles);
       }

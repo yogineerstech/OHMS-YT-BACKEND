@@ -11,12 +11,12 @@ const prisma = new PrismaClient();
 /**
  * Create a new patient (full registration)
  */
-const createPatient = async (patientData, files = {}, hospitalId) => {
+const createPatient = async (patientData, processedFiles = {}, hospitalId) => {
   try {
     console.log('🏥 Creating patient with data:', JSON.stringify(patientData, null, 2));
     
-    // Process uploaded files
-    const processedFiles = files ? processUploadedFiles({ files }) : {};
+    // Files are already processed by controller
+    // const processedFiles = files ? processUploadedFiles({ files }) : {};
     console.log('📁 Processed files:', processedFiles);
 
     // Generate unique identifiers
@@ -152,8 +152,9 @@ const createPatient = async (patientData, files = {}, hospitalId) => {
     console.error('❌ Error creating patient:', error);
     
     // Clean up uploaded files if database save failed
-    if (files) {
-      cleanupUploadedFiles(processUploadedFiles({ files }));
+    if (processedFiles && Object.keys(processedFiles).length > 0) {
+      const { cleanupUploadedFiles } = require('../middleware/upload.middleware');
+      cleanupUploadedFiles(processedFiles);
     }
     
     throw new Error(`Failed to create patient: ${error.message}`);
@@ -163,12 +164,12 @@ const createPatient = async (patientData, files = {}, hospitalId) => {
 /**
  * Create a quick patient registration (minimal data)
  */
-const createQuickPatient = async (patientData, files = {}, hospitalId) => {
+const createQuickPatient = async (patientData, processedFiles = {}, hospitalId) => {
   try {
     console.log('🚀 Creating quick patient registration:', JSON.stringify(patientData, null, 2));
     
-    // Process uploaded files (optional for quick registration)
-    const processedFiles = files ? processUploadedFiles({ files }) : {};
+    // Files are already processed by controller, no need to process again
+    // const processedFiles = files ? processUploadedFiles({ files }) : {};
 
     // Generate unique identifiers
     const patientNumber = await generatePatientNumber(hospitalId);
@@ -273,8 +274,10 @@ const createQuickPatient = async (patientData, files = {}, hospitalId) => {
     console.error('❌ Error creating quick patient:', error);
     
     // Clean up uploaded files if database save failed
-    if (files) {
-      cleanupUploadedFiles(processUploadedFiles({ files }));
+    // Note: processedFiles should already have the file paths for cleanup
+    if (processedFiles && Object.keys(processedFiles).length > 0) {
+      const { cleanupUploadedFiles } = require('../middleware/upload.middleware');
+      cleanupUploadedFiles(processedFiles);
     }
     
     throw new Error(`Failed to create quick patient: ${error.message}`);

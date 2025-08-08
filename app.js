@@ -3,7 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const { PrismaClient } = require('./generated/prisma');
-
+const hostpitalAdminStaffRoutes = require('./routes/hospitalAdmin.staff.routes');
+const patientRoutes =  require('./routes/patient.routes');
 const prisma = new PrismaClient();
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -19,62 +20,13 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Serve uploaded files statically
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+//patient routes
+app.use('/api/patients',patientRoutes);
 
-// Health check endpointnpm
-app.get('/api/health', (req, res) => {
-  res.json({
-    success: true,
-    message: 'OHMS Backend API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// Routes
-try {
-  console.log('Loading superadmin routes...');
-  app.use('/api/superadmin', require('./routes/superadmin.routes'));
-  console.log('Superadmin routes loaded successfully');
-} catch (error) {
-  console.error('Error loading superadmin routes:', error.message);
-}
-
-try {
-  console.log('Loading patient routes...');
-  app.use('/api/patients', require('./routes/patient.routes'));
-  console.log('Patient routes loaded successfully');
-} catch (error) {
-  console.error('Error loading patient routes:', error.message);
-}
-
-// Simple test route
-app.get('/api/test', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Test route working',
-    timestamp: new Date().toISOString()
-  });
-});
-
-// 404 handler - using proper Express route pattern
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: 'API endpoint not found'
-  });
-});
-
-// Global error handler
-app.use((error, req, res, next) => {
-  console.error('Global error handler:', error);
-  
-  res.status(error.status || 500).json({
-    success: false,
-    message: error.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
-  });
-});
+// Super admin routes
+app.use('/api/superadmin', require('./routes/superadmin.routes'));
+app.use('/api/hospital-admin', require('./routes/hospitalAdmin.auth.routes'));
+app.use('/api/hospital-admin/staff', hostpitalAdminStaffRoutes);
 
 // Start server
 app.listen(PORT, () => {

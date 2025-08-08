@@ -888,6 +888,7 @@ model UserSession {
   loginTimestamp          DateTime @default(now())
   lastActivity            DateTime @default(now())
   expiresAt               DateTime?
+  refreshExpiresAt        DateTime?
   isActive                Boolean  @default(true)
   logoutTimestamp         DateTime?
   logoutReason            String?
@@ -1349,7 +1350,7 @@ model SuperAdminCredential {
 // Super Admin Sessions
 model SuperAdminSession {
   id                      String   @id @default(cuid())
-  superAdminId            String
+  superAdminId            String   
   sessionTokenHash        String
   refreshTokenHash        String?
   ipAddress               String?
@@ -1357,6 +1358,7 @@ model SuperAdminSession {
   loginTimestamp          DateTime @default(now())
   lastActivity            DateTime @default(now())
   expiresAt               DateTime
+  refreshExpiresAt        DateTime?
   isActive                Boolean  @default(true)
   logoutTimestamp         DateTime?
 

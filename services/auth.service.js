@@ -1,6 +1,7 @@
 const { prisma } = require('../config/database');
 const { hashPassword, comparePassword } = require('../utils/bcrypt.utils');
 const { generateAccessToken, generateRefreshToken, verifyToken } = require('../utils/jwt.utils');
+const { hashToken, compareToken, extractTokenExpiry } = require('../utils/token.utils');
 const crypto = require('crypto');
 
 class AuthService {
@@ -344,18 +345,25 @@ class AuthService {
     const accessTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Store session
+    // Hash tokens for secure storage
+    const accessTokenHash = hashToken(accessToken);
+    const refreshTokenHash = hashToken(refreshToken);
+
+    // Store session with both plain tokens and hashes
     await prisma.userSession.create({
       data: {
         userId: user.id,
-        sessionTokenHash: accessToken,
-        refreshTokenHash: refreshToken,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        accessTokenHash: accessTokenHash,
+        refreshTokenHash: refreshTokenHash,
         ipAddress,
         userAgent,
         deviceInfo: this.parseUserAgent(userAgent),
         loginTimestamp: new Date(),
         lastActivity: new Date(),
         expiresAt: accessTokenExpiry,
+        refreshExpiresAt: refreshTokenExpiry,
         isActive: true,
         sessionType: 'web'
       }
@@ -388,15 +396,22 @@ class AuthService {
     const accessTokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
     const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
-    // Create session
+    // Hash tokens for secure storage
+    const accessTokenHash = hashToken(accessToken);
+    const refreshTokenHash = hashToken(refreshToken);
+
+    // Create session with both plain tokens and hashes
     await prisma.superAdminSession.create({
       data: {
         superAdminId: superAdmin.id,
-        sessionTokenHash: accessToken,
-        refreshTokenHash: refreshToken,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        accessTokenHash: accessTokenHash,
+        refreshTokenHash: refreshTokenHash,
         ipAddress,
         userAgent,
         expiresAt: accessTokenExpiry,
+        refreshExpiresAt: refreshTokenExpiry
       }
     });
 
@@ -414,11 +429,14 @@ class AuthService {
    * Logout user and invalidate session
    */
   async logout(userId, sessionToken, reason = 'user_logout', userType = 'staff') {
+    // Hash the session token to compare with stored hashes
+    const sessionTokenHash = hashToken(sessionToken);
+
     if (userType === 'super_admin') {
       const result = await prisma.superAdminSession.updateMany({
         where: {
           superAdminId: userId,
-          sessionTokenHash: sessionToken,
+          accessTokenHash: sessionTokenHash,
           isActive: true
         },
         data: {
@@ -431,7 +449,7 @@ class AuthService {
       const result = await prisma.userSession.updateMany({
         where: {
           userId,
-          sessionTokenHash: sessionToken,
+          accessTokenHash: sessionTokenHash,
           isActive: true
         },
         data: {
@@ -480,12 +498,15 @@ class AuthService {
    * Refresh access token
    */
   async refreshToken(refreshToken) {
+    // Hash the provided refresh token to compare with stored hashes
+    const refreshTokenHash = hashToken(refreshToken);
+
     // Try to find session in both staff and super admin sessions
     let session = await prisma.userSession.findFirst({
       where: {
-        refreshTokenHash: refreshToken,
+        refreshTokenHash: refreshTokenHash,
         isActive: true,
-        expiresAt: {
+        refreshExpiresAt: {
           gt: new Date()
         }
       },
@@ -514,9 +535,9 @@ class AuthService {
       // Try super admin session
       session = await prisma.superAdminSession.findFirst({
         where: {
-          refreshTokenHash: refreshToken,
+          refreshTokenHash: refreshTokenHash,
           isActive: true,
-          expiresAt: {
+          refreshExpiresAt: {
             gt: new Date()
           }
         },

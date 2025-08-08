@@ -1,40 +1,45 @@
 {
   "method": "POST",
-  "url": "{{baseUrl}}/api/superadmin/networks",
+  "url": "{{baseUrl}}/api/superadmin/hospitals/64a1b2c3d4e5f6789abcdef2/admins",
   "headers": {
     "Content-Type": "application/json",
     "Authorization": "Bearer {{token}}"
   },
   "body": {
     "raw": {
-      "networkName": "Apollo Health Network",
-      "networkCode": "AHN001",
-      "headquartersAddress": "123 Medical Center Drive, Mumbai, Maharashtra 400001",
-      "registrationNumber": "REG123456789",
-      "taxId": "TAX987654321",
-      "gstin": "27ABCDE1234F1Z5",
-      "primaryContact": {
-        "name": "Dr. Rajesh Sharma",
-        "email": "contact@apollonetwork.com",
+      "personalDetails": {
+        "firstName": "Dr. Priya",
+        "lastName": "Sharma",
+        "email": "priya.sharma@apollomumbai.com",
         "phone": "+91-9876543210",
-        "designation": "Chief Executive Officer"
-      },
-      "networkType": "corporate",
-      "accreditationDetails": {
-        "nabh": {
-          "certified": true,
-          "validUntil": "2025-12-31",
-          "certificateNumber": "NABH/2023/001"
-        },
-        "jci": {
-          "certified": false
+        "dateOfBirth": "1980-05-15",
+        "gender": "female",
+        "address": {
+          "street": "123 Bandra East",
+          "city": "Mumbai",
+          "state": "Maharashtra",
+          "pincode": "400051",
+          "country": "India"
         }
       },
-      "regulatoryCompliance": {
-        "mci": true,
-        "stateHealthDept": true,
-        "pollutionBoard": true
-      }
+      "contactDetails": {
+        "alternatePhone": "+91-9876543211",
+        "emergencyContact": {
+          "name": "Rajesh Sharma",
+          "relationship": "spouse",
+          "phone": "+91-9876543212"
+        }
+      },
+      "employmentDetails": {
+        "designation": "Hospital Administrator",
+        "department": "Administration",
+        "employmentType": "permanent",
+        "joiningDate": "2024-01-15",
+        "probationPeriodMonths": 6,
+        "noticePeriodDays": 30
+      },
+      "generatePassword": true,
+      "sendWelcomeEmail": true
     }
   }
 }

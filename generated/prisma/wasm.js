@@ -730,6 +730,7 @@ exports.Prisma.UserSessionScalarFieldEnum = {
   loginTimestamp: 'loginTimestamp',
   lastActivity: 'lastActivity',
   expiresAt: 'expiresAt',
+  refreshExpiresAt: 'refreshExpiresAt',
   isActive: 'isActive',
   logoutTimestamp: 'logoutTimestamp',
   logoutReason: 'logoutReason',
@@ -1052,6 +1053,7 @@ exports.Prisma.SuperAdminSessionScalarFieldEnum = {
   loginTimestamp: 'loginTimestamp',
   lastActivity: 'lastActivity',
   expiresAt: 'expiresAt',
+  refreshExpiresAt: 'refreshExpiresAt',
   isActive: 'isActive',
   logoutTimestamp: 'logoutTimestamp'
 };

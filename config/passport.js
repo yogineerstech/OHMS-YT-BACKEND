@@ -83,28 +83,20 @@ passport.use(new JwtStrategy({
   secretOrKey: process.env.JWT_SECRET || 'your-secret-key'
 }, async (payload, done) => {
   try {
-    console.log('JWT Strategy - Payload received:', payload);
-    
     let user = null;
-    
-    // Check if it's a SuperAdmin token
+
     if (payload.userType === 'super_admin') {
+      // Handle super admin authentication
       user = await prisma.superAdmin.findUnique({
-        where: { id: payload.userId },
-        include: {
-          credentials: {
-            where: { isActive: true }
-          }
-        }
+        where: { id: payload.userId }
       });
-      console.log('JWT Strategy - SuperAdmin found:', user ? 'Yes' : 'No');
       
-      // Add userType to the user object for middleware
+      // Add userType to the user object for middleware checks
       if (user) {
         user.userType = 'super_admin';
       }
     } else {
-      // Handle Staff token
+      // Handle staff authentication
       user = await prisma.staff.findUnique({
         where: { id: payload.userId },
         include: {
@@ -121,18 +113,11 @@ passport.use(new JwtStrategy({
           department: true
         }
       });
-      console.log('JWT Strategy - Staff found:', user ? 'Yes' : 'No');
       
-      // Add userType to the user object for middleware
+      // Add userType to the user object for middleware checks
       if (user) {
         user.userType = 'staff';
       }
-    }
-
-    if (user) {
-      console.log('JWT Strategy - User ID:', user.id);
-      console.log('JWT Strategy - User isActive:', user.isActive);
-      console.log('JWT Strategy - User type:', user.userType);
     }
 
     if (user && user.isActive) {

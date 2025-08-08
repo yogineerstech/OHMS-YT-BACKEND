@@ -206,6 +206,30 @@ const validateFileUploads = (req, res, next) => {
   next();
 };
 
+// Staff validation functions
+const validateCreateStaff = [
+  body('personalDetails').notEmpty().withMessage('Personal details are required'),
+  body('personalDetails.firstName').notEmpty().withMessage('First name is required'),
+  body('personalDetails.lastName').notEmpty().withMessage('Last name is required'),
+  body('personalDetails.email').isEmail().withMessage('Valid email is required'),
+  body('roleId').notEmpty().withMessage('Role ID is required'),
+  body('departmentId').notEmpty().withMessage('Department ID is required'),
+  body('employmentType').isIn(['permanent', 'contract', 'consultant', 'temporary']).withMessage('Invalid employment type'),
+];
+
+const validateUpdateStaff = [
+  param('staffId').notEmpty().withMessage('Staff ID is required'),
+  body('personalDetails').optional(),
+  body('roleId').optional(),
+  body('departmentId').optional(),
+  body('employmentStatus').optional().isIn(['active', 'inactive', 'terminated', 'suspended']).withMessage('Invalid employment status'),
+];
+
+const validatePasswordReset = [
+  param('staffId').notEmpty().withMessage('Staff ID is required'),
+  body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters long'),
+];
+
 // Check validation results
 const checkValidationResult = (req, res, next) => {
   const errors = validationResult(req);
@@ -267,5 +291,9 @@ module.exports = {
   validateFileUploads,
   checkValidationResult,
   handleEmergencyContactFallback,
-  validateEmergencyContactExists
+  validateEmergencyContactExists,
+  // Staff validation functions
+  validateCreateStaff,
+  validateUpdateStaff,
+  validatePasswordReset
 };
